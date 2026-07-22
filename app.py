@@ -304,7 +304,6 @@ def reset_report_cache() -> None:
 
 
 def clear_mode_dependent_work() -> None:
-    """Clear apparatus work before any Section 4 widgets are instantiated."""
     st.session_state.lab_data = blank_lab_dataframe()
     st.session_state.captured_loads = []
     st.session_state.zero_return = "Not checked"
@@ -312,26 +311,21 @@ def clear_mode_dependent_work() -> None:
     st.session_state.experimental_calc_complete = False
     st.session_state.simulation_student_id = ""
     # Remove widget-owned editor state so the next physical table is rebuilt
-    # cleanly from lab_data. The legacy key is removed for users upgrading.
+    # cleanly from lab_data. The legacy key is removed for users upgrading from v6.
     st.session_state.pop(PHYSICAL_EDITOR_KEY, None)
     st.session_state.pop("physical_lab_editor", None)
     reset_report_cache()
 
 
 def request_clear_mode_dependent_work() -> None:
-    """Button callback: request a clear without mutating active widget keys."""
     st.session_state.clear_apparatus_requested = True
 
 
 def apply_pending_apparatus_clear() -> None:
-    """Apply a requested clear at the start of a rerun, before widgets exist."""
     if st.session_state.get("clear_apparatus_requested", False):
         st.session_state.clear_apparatus_requested = False
         clear_mode_dependent_work()
         st.session_state.apparatus_clear_notice = True
-
-
-apply_pending_apparatus_clear()
 
 
 def theoretical_forces(mass_kg: float) -> Dict[str, float]:
@@ -676,6 +670,49 @@ def closest_member_to_theory(comparison: pd.DataFrame) -> str:
     return min(candidates)[1] if candidates else ""
 
 
+
+def render_apparatus_overview() -> None:
+    st.markdown(
+        '<div class="info"><b>Apparatus overview:</b> a simply supported plane truss is loaded vertically at joint B. Five members (AF, FE, AE, AB and EB) contain proving rings / dial gauges so their axial response can be measured directly.</div>',
+        unsafe_allow_html=True,
+    )
+    st.pyplot(plot_apparatus(30, False, "Plane-truss apparatus and instrumented members"), width="stretch")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(
+            """
+            <div class="card">
+            <h4 style="margin-top:0;color:#0B4F8A;">What the apparatus contains</h4>
+            <ul style="margin-bottom:0; line-height:1.55;">
+              <li><b>Pin support at A</b> and <b>roller support at C</b>.</li>
+              <li><b>Load hanger at joint B</b> for 10 kg, 20 kg and 30 kg test loads.</li>
+              <li><b>Five instrumented members</b>: AF, FE, AE, AB and EB.</li>
+              <li>Signed dial readings in <b>millimetres (mm)</b>.</li>
+              <li>The dial direction is interpreted as <b>tension</b> or <b>compression</b> using the apparatus convention shown in the laboratory.</li>
+            </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with c2:
+        st.markdown(
+            """
+            <div class="card">
+            <h4 style="margin-top:0;color:#0B4F8A;">What students do</h4>
+            <ol style="margin-bottom:0; line-height:1.55;">
+              <li>Enter your details and choose <b>Physical laboratory</b> or <b>Online simulated practical</b>.</li>
+              <li>Complete the short pre-lab and prediction sections.</li>
+              <li>Record or generate readings for <b>10 kg, 20 kg and 30 kg</b>.</li>
+              <li>Enter selected theoretical values for the <b>30 kg</b> case.</li>
+              <li>Compare theoretical and measured behaviour.</li>
+              <li>Generate the Word report template, complete the shaded writing spaces, and submit the final DOCX to <b>LearnJCU</b>.</li>
+            </ol>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def section_start() -> None:
     st.subheader("1. Start: student details and practical mode")
     st.markdown(
@@ -686,7 +723,7 @@ def section_start() -> None:
         '<div class="warning"><b>Important - use your official JCU student ID:</b> Enter the eight-digit student number shown in your JCU account. Do not enter your email address, name, initials or a made-up number. A valid JCU student ID is required for the practical report and the online practical pathway.</div>',
         unsafe_allow_html=True,
     )
-    left, right = st.columns([1.05, 0.95])
+    left, right = st.columns([0.95, 1.05])
     with left:
         st.text_input("Student full name *", key="student_name")
         st.text_input("JCU student ID (8 digits) *", key="student_id", max_chars=8, placeholder="Example: 12345678")
@@ -699,24 +736,21 @@ def section_start() -> None:
         if mode != st.session_state.previous_mode:
             clear_mode_dependent_work()
             st.session_state.previous_mode = mode
-            st.info("The data table was cleared because the practical mode changed.")
+            st.info("The apparatus data were cleared because the practical mode changed.")
 
         if mode == PHYSICAL_MODE:
-            st.markdown("**Use this mode when:** students attend the laboratory and read the proving-ring dial gauges on the apparatus.")
+            st.markdown('<div class="hint"><b>Physical laboratory:</b> use the real truss apparatus, observe the proving-ring / dial-gauge responses and enter the signed readings directly into the table in Section 4.</div>', unsafe_allow_html=True)
         elif mode == ONLINE_MODE:
-            st.markdown("**Use this mode when:** the apparatus or laboratory is unavailable. The app generates a realistic, reproducible dataset linked to the student ID.")
+            st.markdown('<div class="hint"><b>Online simulated practical:</b> the app generates one of four controlled datasets using your official JCU student ID. The online readings are reproducible for the same student.</div>', unsafe_allow_html=True)
         else:
-            st.warning("Select a practical mode before entering apparatus data.")
+            st.markdown('<div class="warning">Select a practical mode before entering apparatus data.</div>', unsafe_allow_html=True)
 
         st.markdown("### What students submit")
         st.markdown(
-            "TrussLab generates a uniform eight-page Word report template containing the student data, numerical results, tables and figures. Students then complete every shaded writing space in their own words, keep the prescribed formatting and page length, and submit the finished DOCX through LearnJCU."
+            "TrussLab generates a uniform eight-page Word report template containing the student data, numerical results, tables and figures. Students complete every shaded writing space in their own words, keep the prescribed formatting and page length, and submit the finished DOCX through LearnJCU."
         )
     with right:
-        if APPARATUS_B64:
-            st.image(base64.b64decode(APPARATUS_B64), caption="Plane-truss practical apparatus", width="stretch")
-        else:
-            st.pyplot(plot_apparatus(0, False), width="stretch")
+        render_apparatus_overview()
 
 
 def section_prepare() -> None:
@@ -761,6 +795,7 @@ def set_lab_value(member: str, column: str, value: float) -> None:
     st.session_state.lab_data = df
 
 
+
 def section_data() -> None:
     st.subheader("4. Apparatus and data collection")
     mode = st.session_state.practical_mode
@@ -770,19 +805,42 @@ def section_data() -> None:
 
     if mode == PHYSICAL_MODE:
         st.markdown('<div class="warning"><b>Safety:</b> inspect the apparatus, keep hands clear of the load hanger and do not exceed the approved 30 kg load.</div>', unsafe_allow_html=True)
-        st.markdown(
-            """
-            **Short procedure**
-
-            1. Check that the truss is not binding against the support frame.
-            2. Identify the physical dial direction for tension and compression.
-            3. Zero all five gauges with no applied mass.
-            4. Apply 10 kg, 20 kg and 30 kg at joint B and enter each signed reading directly into the table below.
-            5. The table saves entries automatically. Repeat only a reading that appears inconsistent or is flagged by the app.
-            6. Remove the load and record whether the gauges return close to zero.
-            7. Click **Check data completeness and quality** before moving to the calculation section.
-            """
-        )
+        top_left, top_right = st.columns([0.58, 0.42])
+        with top_left:
+            st.markdown(
+                """
+                <div class="card">
+                <h4 style="margin-top:0;color:#0B4F8A;">Physical laboratory procedure</h4>
+                <ol style="margin-bottom:0; line-height:1.58;">
+                  <li>Check that the truss is not touching or binding against the support frame.</li>
+                  <li>Identify which dial direction represents <b>tension</b> and which represents <b>compression</b>.</li>
+                  <li>With no applied load, carefully zero the five gauges.</li>
+                  <li>Apply <b>10 kg</b>, then <b>20 kg</b>, then <b>30 kg</b> at joint B.</li>
+                  <li>For each load, enter the signed dial reading for AF, FE, AE, AB and EB in the table below.</li>
+                  <li>Remove the load and record whether the gauges return close to zero.</li>
+                  <li>Click <b>Check data completeness and quality</b> before moving on.</li>
+                </ol>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with top_right:
+            st.markdown(
+                """
+                <div class="card">
+                <h4 style="margin-top:0;color:#0B4F8A;">What to enter</h4>
+                <ul style="margin-bottom:0; line-height:1.58;">
+                  <li>Use units of <b>millimetres (mm)</b>.</li>
+                  <li>Enter the <b>signed</b> reading shown by the apparatus.</li>
+                  <li>The table saves entries automatically in the current session.</li>
+                  <li>If a reading looks inconsistent, recheck the apparatus before re-entering it.</li>
+                  <li>Only proceed when all <b>15 readings</b> and the return-to-zero response are complete.</li>
+                </ul>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.pyplot(plot_apparatus(30, False, "Apparatus layout and instrumented members"), width="stretch")
         edited = st.data_editor(
             st.session_state.lab_data,
             hide_index=True,
@@ -845,14 +903,10 @@ def section_data() -> None:
     with c1:
         check_clicked = st.button("Check data completeness and quality", type="primary")
     with c2:
-        st.button(
-            "Clear all apparatus data",
-            on_click=request_clear_mode_dependent_work,
-            key="clear_all_apparatus_button",
-        )
+        st.button("Clear all apparatus data", on_click=request_clear_mode_dependent_work, key="clear_apparatus_data_button")
 
     if st.session_state.get("apparatus_clear_notice", False):
-        st.success("All apparatus readings and the return-to-zero response have been cleared.")
+        st.success("All apparatus readings and the return-to-zero response were cleared.")
         st.session_state.apparatus_clear_notice = False
 
     readings_complete = not st.session_state.lab_data[["10 kg (mm)", "20 kg (mm)", "30 kg (mm)"]].isna().any().any()
@@ -872,7 +926,6 @@ def section_data() -> None:
             st.error("The online dataset was recorded for a different student ID. Clear and record the data again.")
         if st.session_state.lab_complete:
             st.success("Apparatus data section complete.")
-
 
 def numeric_result(value, expected: float, tolerance: float) -> bool:
     return value is not None and abs(float(value) - expected) <= tolerance
