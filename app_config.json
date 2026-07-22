@@ -1,0 +1,10 @@
+{
+  "course_code": "EG1011",
+  "course_name": "Statics and Dynamics",
+  "practical_number": "Practical",
+  "practical_title": "Forces in a Plane Truss",
+  "allowed_tension_N": 300.0,
+  "allowed_compression_N": 220.0,
+  "approved_max_mass_kg": 30.0,
+  "report_prefix": "EG1011_Truss_Practical"
+}
