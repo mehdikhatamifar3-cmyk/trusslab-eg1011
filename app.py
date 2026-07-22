@@ -285,7 +285,11 @@ initialise_state()
 # section. Reassigning ordinary widget keys interrupts that cleanup so entries
 # remain available when navigating. Complex widgets such as data_editor own
 # their internal session-state value and must be excluded from this operation.
-_WIDGET_MANAGED_KEYS = {PHYSICAL_EDITOR_KEY, "physical_lab_editor"}
+_WIDGET_MANAGED_KEYS = {
+    PHYSICAL_EDITOR_KEY,
+    "physical_lab_editor",
+    "clear_apparatus_data_button",  # legacy key from v10; never preserve/reassign
+}
 
 
 def preserve_cross_section_state() -> None:
@@ -294,8 +298,6 @@ def preserve_cross_section_state() -> None:
         if state_key not in _WIDGET_MANAGED_KEYS:
             st.session_state[state_key] = st.session_state[state_key]
 
-
-preserve_cross_section_state()
 
 
 def reset_report_cache() -> None:
@@ -322,10 +324,19 @@ def request_clear_mode_dependent_work() -> None:
 
 
 def apply_pending_apparatus_clear() -> None:
+    # v10 used an explicit key on the clear button. Remove any stale value
+    # before Streamlit creates widgets in the current run.
+    st.session_state.pop("clear_apparatus_data_button", None)
     if st.session_state.get("clear_apparatus_requested", False):
         st.session_state.clear_apparatus_requested = False
         clear_mode_dependent_work()
         st.session_state.apparatus_clear_notice = True
+
+
+# These must run before render_header() and before the selected section creates
+# any widgets. This prevents StreamlitValueAssignmentNotAllowedError.
+apply_pending_apparatus_clear()
+preserve_cross_section_state()
 
 
 def theoretical_forces(mass_kg: float) -> Dict[str, float]:
@@ -903,7 +914,7 @@ def section_data() -> None:
     with c1:
         check_clicked = st.button("Check data completeness and quality", type="primary")
     with c2:
-        st.button("Clear all apparatus data", on_click=request_clear_mode_dependent_work, key="clear_apparatus_data_button")
+        st.button("Clear all apparatus data", on_click=request_clear_mode_dependent_work)
 
     if st.session_state.get("apparatus_clear_notice", False):
         st.success("All apparatus readings and the return-to-zero response were cleared.")
@@ -1231,6 +1242,7 @@ def section_report() -> None:
 render_header()
 
 st.sidebar.markdown("## TrussLab navigation")
+st.sidebar.caption("Version 11")
 page = st.sidebar.radio(
     "Choose a section",
     [
