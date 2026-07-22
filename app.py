@@ -245,6 +245,8 @@ def initialise_state() -> None:
         "report_bytes": None,
         "report_filename": "",
         "simulation_student_id": "",
+        "clear_apparatus_requested": False,
+        "apparatus_clear_notice": False,
         "pre_q1": None,
         "pre_q2": None,
         "pre_q3": None,
@@ -302,16 +304,34 @@ def reset_report_cache() -> None:
 
 
 def clear_mode_dependent_work() -> None:
+    """Clear apparatus work before any Section 4 widgets are instantiated."""
     st.session_state.lab_data = blank_lab_dataframe()
     st.session_state.captured_loads = []
     st.session_state.zero_return = "Not checked"
     st.session_state.lab_complete = False
     st.session_state.experimental_calc_complete = False
+    st.session_state.simulation_student_id = ""
     # Remove widget-owned editor state so the next physical table is rebuilt
-    # cleanly from lab_data. The legacy key is removed for users upgrading from v6.
+    # cleanly from lab_data. The legacy key is removed for users upgrading.
     st.session_state.pop(PHYSICAL_EDITOR_KEY, None)
     st.session_state.pop("physical_lab_editor", None)
     reset_report_cache()
+
+
+def request_clear_mode_dependent_work() -> None:
+    """Button callback: request a clear without mutating active widget keys."""
+    st.session_state.clear_apparatus_requested = True
+
+
+def apply_pending_apparatus_clear() -> None:
+    """Apply a requested clear at the start of a rerun, before widgets exist."""
+    if st.session_state.get("clear_apparatus_requested", False):
+        st.session_state.clear_apparatus_requested = False
+        clear_mode_dependent_work()
+        st.session_state.apparatus_clear_notice = True
+
+
+apply_pending_apparatus_clear()
 
 
 def theoretical_forces(mass_kg: float) -> Dict[str, float]:
@@ -825,9 +845,15 @@ def section_data() -> None:
     with c1:
         check_clicked = st.button("Check data completeness and quality", type="primary")
     with c2:
-        if st.button("Clear all apparatus data"):
-            clear_mode_dependent_work()
-            st.rerun()
+        st.button(
+            "Clear all apparatus data",
+            on_click=request_clear_mode_dependent_work,
+            key="clear_all_apparatus_button",
+        )
+
+    if st.session_state.get("apparatus_clear_notice", False):
+        st.success("All apparatus readings and the return-to-zero response have been cleared.")
+        st.session_state.apparatus_clear_notice = False
 
     readings_complete = not st.session_state.lab_data[["10 kg (mm)", "20 kg (mm)", "30 kg (mm)"]].isna().any().any()
     zero_checked = st.session_state.zero_return != "Not checked"
