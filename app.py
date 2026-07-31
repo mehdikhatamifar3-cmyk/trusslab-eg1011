@@ -29,7 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "17"
+APP_VERSION = "18"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -292,6 +292,32 @@ st.markdown(
       .bad { background:#fff1f2; border:1px solid #fecdd3; color:#9f1239; border-radius:9px; padding:10px 12px; margin:6px 0; }
       .card { border:1px solid #dfe4ea; border-radius:10px; padding:14px 16px; margin-bottom:14px; background:#fff; }
       .small-note { color:#64748b; font-size:13px; line-height:1.45; }
+      .page-heading {
+        padding:2px 0 12px; margin:0 0 6px; border-bottom:1px solid #E6ECF2;
+      }
+      .page-heading .section-label {
+        color:#0B4F8A; font-size:10px; font-weight:800; letter-spacing:0.13em;
+        text-transform:uppercase; margin-bottom:4px;
+      }
+      .page-heading .section-title {
+        color:#172033; font-size:25px; font-weight:800; line-height:1.16; letter-spacing:-0.02em;
+      }
+      .page-heading .section-summary {
+        color:#607083; font-size:13px; line-height:1.48; margin-top:5px; max-width:920px;
+      }
+      div[data-testid="stPopover"] > button {
+        border:1px solid #C9D7E4 !important; border-radius:999px !important;
+        background:#F7FAFD !important; color:#23445F !important; font-weight:750 !important;
+        min-height:2.25rem !important; padding:0.35rem 0.8rem !important;
+        box-shadow:none !important;
+      }
+      div[data-testid="stPopover"] > button:hover {
+        background:#EDF5FC !important; border-color:#8EB0CC !important; color:#0B4F8A !important;
+      }
+      .help-completion {
+        background:#F2F8FD; border:1px solid #D4E5F3; border-left:4px solid #0B4F8A;
+        border-radius:9px; padding:9px 11px; color:#34516B; font-size:12px; line-height:1.45; margin-top:10px;
+      }
       div[data-testid="stMetric"] { background:#ffffff; border:1px solid #e2e8f0; padding:10px 12px; border-radius:10px; }
       .start-hero {
         display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
@@ -437,6 +463,40 @@ def render_header() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_section_heading(
+    section_number: int,
+    title: str,
+    summary: str,
+    steps: List[str],
+    completion: str,
+    note: str | None = None,
+) -> None:
+    """Render a consistent page heading with concise, optional student guidance."""
+    heading_col, help_col = st.columns([0.86, 0.14], gap="small")
+    with heading_col:
+        st.markdown(
+            f"""
+            <div class="page-heading">
+              <div class="section-label">Section {section_number}</div>
+              <div class="section-title">{title}</div>
+              <div class="section-summary">{summary}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with help_col:
+        with st.popover("❓ Help"):
+            st.markdown("#### What to do")
+            for index, step in enumerate(steps, start=1):
+                st.markdown(f"**{index}.** {step}")
+            st.markdown(
+                f'<div class="help-completion"><b>Before moving on</b><br>{completion}</div>',
+                unsafe_allow_html=True,
+            )
+            if note:
+                st.caption(note)
 
 
 def blank_lab_dataframe() -> pd.DataFrame:
@@ -1030,35 +1090,44 @@ def render_apparatus_overview() -> None:
 
 
 def section_start() -> None:
-    st.markdown(
-        """
-        <div class="start-hero">
-          <div>
-            <div class="eyebrow">Getting started</div>
-            <div class="headline">Set up your practical</div>
-            <div class="description">Enter your JCU details, choose the correct pathway and then complete the guided workflow in order. Your entries are retained as you move between sections.</div>
-          </div>
-          <div class="start-steps">
-            <div class="start-step-chip"><span class="num">1</span> Enter details</div>
-            <div class="start-step-chip"><span class="num">2</span> Choose pathway</div>
-            <div class="start-step-chip"><span class="num">3</span> Begin practical</div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_section_heading(
+        1,
+        "Student details and practical pathway",
+        "Enter your official JCU details, choose the correct pathway and review how the practical and report workflow operate.",
+        [
+            "Enter your full name, official eight-digit JCU student ID and scheduled practical/tutorial group.",
+            "Choose Physical laboratory when attending the apparatus session, or Online simulated practical when an in-person session cannot run.",
+            "Review the apparatus overview and the final submission requirement before continuing.",
+        ],
+        "All three identity fields are complete and one practical pathway is selected.",
+        "Changing the practical pathway later clears apparatus data and the physical safety acknowledgement.",
     )
 
     left, right = st.columns([0.88, 1.12], gap="large")
     with left:
         with st.container(border=True):
-            st.markdown('<div class="panel-heading">Student and session details</div><div class="panel-subheading">Use the details associated with your JCU enrolment and scheduled practical group.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="panel-heading">Student and session details</div>'
+                '<div class="panel-subheading">Use the details associated with your JCU enrolment and scheduled practical group.</div>',
+                unsafe_allow_html=True,
+            )
             st.text_input("Student full name *", key="student_name")
-            st.markdown('<div class="start-id-note"><b>Use your official JCU student ID.</b> Enter the eight-digit student number shown in your JCU account—not your email address, initials or a made-up number.</div>', unsafe_allow_html=True)
-            st.text_input("JCU student ID (8 digits) *", key="student_id", max_chars=8, placeholder="Example: 12345678")
+            st.markdown(
+                '<div class="start-id-note"><b>Use your official JCU student ID.</b> '
+                'Enter the eight-digit student number shown in your JCU account—not your email address, initials or a made-up number.</div>',
+                unsafe_allow_html=True,
+            )
+            st.text_input(
+                "JCU student ID (8 digits) *",
+                key="student_id",
+                max_chars=8,
+                placeholder="Example: 12345678",
+            )
             if st.session_state.student_id and not valid_jcu_student_id(st.session_state.student_id):
                 st.error("Enter your official eight-digit JCU student ID using numbers only.")
             elif valid_jcu_student_id(st.session_state.student_id):
                 st.success("JCU student ID format accepted.")
+
             st.text_input("Practical/tutorial group *", key="group", placeholder="Example: Tuesday 2 pm")
             mode = st.selectbox("Practical pathway *", MODE_OPTIONS, key="practical_mode")
             if mode != st.session_state.previous_mode:
@@ -1068,14 +1137,27 @@ def section_start() -> None:
                 st.info("The apparatus data were cleared because the practical pathway changed.")
 
             if mode == PHYSICAL_MODE:
-                st.markdown('<div class="mode-summary"><b>Physical laboratory:</b> attend the scheduled session, complete the safety induction, use the apparatus and enter the signed readings in Section 5.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="mode-summary"><b>Physical laboratory:</b> attend the scheduled session, '
+                    'complete the safety induction, use the apparatus and enter the signed readings in Section 5.</div>',
+                    unsafe_allow_html=True,
+                )
             elif mode == ONLINE_MODE:
-                st.markdown('<div class="mode-summary"><b>Online simulated practical:</b> the app creates a controlled, reproducible dataset from your official JCU student ID.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="mode-summary"><b>Online simulated practical:</b> the app creates a controlled, '
+                    'reproducible dataset from your official JCU student ID.</div>',
+                    unsafe_allow_html=True,
+                )
             else:
-                st.markdown('<div class="mode-summary"><b>Choose a pathway</b> before continuing to apparatus data collection.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="mode-summary"><b>Choose a pathway</b> before continuing to apparatus data collection.</div>',
+                    unsafe_allow_html=True,
+                )
 
             st.markdown(
-                '<div class="submission-summary"><b>Final submission:</b> TrussLab generates a uniform eight-page Word template containing your data, numerical results, tables and figures. Complete the shaded writing spaces in your own words and submit the finished DOCX through LearnJCU.</div>',
+                '<div class="submission-summary"><b>Final submission:</b> TrussLab generates a uniform eight-page '
+                'Word template containing your data, numerical results, tables and figures. Complete the shaded writing '
+                'spaces in your own words and submit the finished DOCX through LearnJCU.</div>',
                 unsafe_allow_html=True,
             )
 
@@ -1083,9 +1165,19 @@ def section_start() -> None:
         with st.container(border=True):
             render_apparatus_overview()
 
-
 def section_prepare() -> None:
-    st.subheader("2. Prepare: short pre-lab responses")
+    render_section_heading(
+        2,
+        "Pre-lab preparation",
+        "Use the truss schematic to complete five short questions before beginning the practical activity.",
+        [
+            "Inspect the support symbols and the labelled instrumented members in the schematic.",
+            "Answer all five questions, including the 10 kg mass-to-weight calculation.",
+            "Review your own answers before leaving the section; the app saves them automatically.",
+        ],
+        "All five responses are entered and the green completion message is visible.",
+        "The student app records responses but does not mark or reveal the correct answers.",
+    )
     st.markdown(
         '<div class="info"><b>Expected workload:</b> approximately 10 minutes. Enter your responses; they will be included in the generated report for lecturer marking.</div>',
         unsafe_allow_html=True,
@@ -1105,7 +1197,18 @@ def section_prepare() -> None:
         st.caption("Complete all five responses before generating the report. The app does not mark or reveal the answers.")
 
 def section_predict() -> None:
-    st.subheader("3. Predict the instrumented member behaviour")
+    render_section_heading(
+        3,
+        "Member predictions",
+        "Predict whether each proving-ring member is in tension, compression or approximately zero force.",
+        [
+            "Use the truss geometry, support conditions and central load position.",
+            "Select one state for each of AF, FE, AE, AB and EB.",
+            "Check that no member remains as Select before continuing.",
+        ],
+        "All five member predictions are entered and saved.",
+        "The lecturer marks these responses from the generated report; no solutions are shown here.",
+    )
     st.markdown('<div class="hint">Enter your prediction for each proving-ring member. The lecturer will mark these responses from the generated report.</div>', unsafe_allow_html=True)
     col1, col2 = st.columns([0.95, 1.05])
     with col1:
@@ -1122,7 +1225,18 @@ def section_predict() -> None:
 
 
 def section_safety() -> None:
-    st.subheader("4. Lab attendance and safety acknowledgement")
+    render_section_heading(
+        4,
+        "Lab attendance and safety induction",
+        "Physical-laboratory students must review and confirm the safety controls before accessing apparatus data collection.",
+        [
+            "Physical pathway: attend the scheduled session and listen to the demonstrator's local briefing.",
+            "Read and tick every acknowledgement covering PPE, apparatus inspection, loading controls and emergency reporting.",
+            "Click Confirm attendance and safety acknowledgement after all items are ticked.",
+        ],
+        "Physical students see a safety-gate-complete message. Online students may continue without a physical attendance confirmation.",
+        "This checklist supports, but does not replace, JCU signage, the local risk assessment or demonstrator instructions.",
+    )
     mode = st.session_state.get("practical_mode", MODE_OPTIONS[0])
 
     if mode == MODE_OPTIONS[0]:
@@ -1246,7 +1360,29 @@ def set_lab_value(member: str, column: str, value: float) -> None:
 
 
 def section_data() -> None:
-    st.subheader("5. Apparatus and data collection")
+    mode = st.session_state.get("practical_mode", MODE_OPTIONS[0])
+    if mode == PHYSICAL_MODE:
+        help_steps = [
+            "Zero the five gauges, then apply 10 kg, 20 kg and 30 kg at joint B in sequence.",
+            "Enter all 15 signed dial readings in millimetres and record the return-to-zero observation.",
+            "Click Check data completeness and quality before moving to calculations.",
+        ]
+        help_completion = "All 15 readings, the return-to-zero response and the data-quality check are complete."
+    else:
+        help_steps = [
+            "Use your official JCU student ID, select 10 kg, 20 kg and 30 kg, and record each load.",
+            "Select 0 kg after the loaded cases and confirm the simulated return-to-zero observation.",
+            "Click Check data completeness and quality before moving to calculations.",
+        ]
+        help_completion = "The three loaded cases, return-to-zero response and data-quality check are complete."
+    render_section_heading(
+        5,
+        "Apparatus and data collection",
+        "Collect the signed proving-ring readings using the selected physical or online practical pathway.",
+        help_steps,
+        help_completion,
+        "Use signed readings in millimetres. Do not change pathway or student ID after recording online data.",
+    )
     mode = st.session_state.practical_mode
     if mode == MODE_OPTIONS[0]:
         st.error("Return to Section 1 and select either the physical or online practical mode.")
@@ -1434,9 +1570,20 @@ def _part_b_entries_complete() -> bool:
 
 
 def section_calculate() -> None:
+    render_section_heading(
+        6,
+        "Truss calculations",
+        "Enter the selected theoretical results for the 30 kg load case using your own equilibrium analysis.",
+        [
+            "Convert the 30 kg mass to the applied load W and calculate the vertical support reaction Ay.",
+            "Determine F_AE, F_AB and F_EB using the method of joints or another valid equilibrium method.",
+            "Use positive values for tension and negative values for compression.",
+        ],
+        "All five numerical fields are completed and saved.",
+        "Show your equations and full working later in the fixed calculation space in the generated Word report.",
+    )
     if not require_safety_before_main_practical():
         return
-    st.subheader("6. Selected theoretical calculations")
     st.markdown('<div class="info">Enter the numerical results for the 30 kg case. The generated Word report provides a fixed, professionally formatted space for you to show the equations and complete working.</div>', unsafe_allow_html=True)
     st.pyplot(plot_apparatus(30, False, "Calculation case: 30 kg at joint B"), width="stretch")
     st.markdown("Use **positive for tension** and **negative for compression**.")
@@ -1457,9 +1604,20 @@ def section_calculate() -> None:
 
 
 def section_compare() -> None:
+    render_section_heading(
+        7,
+        "Results analysis",
+        "Compare measured or simulated behaviour with your theoretical forces and complete one experimental-force calculation.",
+        [
+            "Review the comparison table and dial-response graph for proportionality and consistency.",
+            "Use the 30 kg AE reading and its calibration factor to calculate the experimental force F_AE = Df.",
+            "Use the generated Word report to complete the guided analysis and discussion in your own words.",
+        ],
+        "The experimental AE force is entered and you understand which report discussion sections remain to be completed in Word.",
+        "The app uses the theoretical values you entered in Section 6 and does not substitute lecturer solutions.",
+    )
     if not require_safety_before_main_practical():
         return
-    st.subheader("7. Compare results")
     if not st.session_state.lab_complete:
         st.warning("Complete and save the apparatus data in Section 5 before finalising this section.")
     if USING_DEMO_CALIBRATION and st.session_state.practical_mode == PHYSICAL_MODE:
@@ -1503,9 +1661,20 @@ def section_compare() -> None:
 
 
 def section_part_b() -> None:
+    render_section_heading(
+        8,
+        "Engineering challenge",
+        "Use the safe-load visualisation and allowable member forces to determine why the practical load is limited to approximately 30 kg.",
+        [
+            "Move the mass slider and observe maximum tension, maximum compression and pass/fail status.",
+            "Determine the maximum safe mass to the nearest 0.1 kg.",
+            "Identify the controlling member and whether tension or compression governs the limit.",
+        ],
+        "Maximum safe mass, controlling member and controlling force type are all entered.",
+        "Record your derivation and engineering interpretation in the shaded spaces of the generated Word report.",
+    )
     if not require_safety_before_main_practical():
         return
-    st.subheader("8. Engineering challenge: safe-load assessment")
     st.markdown(
         f'<div class="info"><b>Design question:</b> Why is the apparatus practical limited to approximately {APPROVED_MASS:.0f} kg? Use the graph and allowable values to determine the maximum safe mass. The allowable tension is {TENSION_LIMIT:.0f} N and allowable compression magnitude is {COMPRESSION_LIMIT:.0f} N.</div>',
         unsafe_allow_html=True,
@@ -1628,6 +1797,18 @@ def create_report_bytes() -> Tuple[bytes, str]:
 
 
 def section_report() -> None:
+    render_section_heading(
+        9,
+        "Report and submission",
+        "Validate the practical entries, generate the uniform Word report template, complete the remaining writing and submit the final DOCX through LearnJCU.",
+        [
+            "Review the completion checklist and return to any section showing an empty box.",
+            "Confirm that you have reviewed your entries, then generate and download the Word report template.",
+            "Complete every shaded writing space without changing the prescribed layout, review the final document and submit it through LearnJCU.",
+        ],
+        "The report downloads successfully and all shaded sections are completed in Word before submission.",
+        "The app does not upload your answers to a class database; download the report before closing the session.",
+    )
     if not require_safety_before_main_practical():
         return
     st.session_state.prelab_complete = _prelab_entries_complete()
@@ -1782,7 +1963,8 @@ def render_sidebar() -> str:
         )
 
     st.sidebar.markdown(
-        f'<div class="sidebar-footer"><b>Submission:</b> generate the Word template, complete the shaded writing spaces, and submit the final DOCX through LearnJCU.'
+        f'<div class="sidebar-footer"><b>Need guidance?</b> Use the ❓ Help button at the top of each section.'
+        f'<br><br><b>Submission:</b> generate the Word template, complete the shaded writing spaces, and submit the final DOCX through LearnJCU.'
         f'<br><br>TrussLab v{APP_VERSION}</div>',
         unsafe_allow_html=True,
     )
