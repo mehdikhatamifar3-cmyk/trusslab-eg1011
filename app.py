@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Clean deployment release: TrussLab v2.4
+
 import base64
 import hashlib
 import io
@@ -29,7 +31,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "2.2"
+APP_VERSION = "2.4"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -938,6 +940,72 @@ st.markdown(
 )
 
 
+# Final student-facing polish for TrussLab v2.4.
+st.markdown(
+    """
+    <style>
+      /* Slightly more compact apparatus reference card. */
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        padding:0.68rem 0.76rem 0.72rem !important;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] .apparatus-topline {
+        margin-bottom:-2px;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stImage"] {
+        margin-top:-0.18rem;
+        margin-bottom:-0.12rem;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] .apparatus-legend {
+        margin-top:-3px;
+      }
+
+      /* Improve workflow scanning without increasing sidebar weight. */
+      [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        font-size:13.5px;
+        font-weight:500;
+        letter-spacing:-0.005em;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        font-size:13.5px;
+        font-weight:800;
+      }
+
+      /* Premium progress treatment: thicker, rounded and subtly illuminated. */
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div {
+        height:11px;
+        border-radius:999px;
+        background:#E6EDF4;
+        box-shadow:inset 0 1px 2px rgba(15,23,42,.08);
+        overflow:hidden;
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div {
+        border-radius:999px;
+        background:linear-gradient(90deg,#003B71 0%,#1769B0 52%,#2F80ED 100%);
+        box-shadow:0 1px 5px rgba(47,128,237,.28);
+        transition:width .45s ease;
+      }
+
+      /* Explicit first action for students who are new to the practical. */
+      .welcome-next-step {
+        margin:-8px 2px 18px;
+        color:#526274;
+        font-size:13px;
+        line-height:1.45;
+      }
+      .welcome-next-step b {
+        color:#003B71;
+        font-weight:800;
+      }
+
+      @media (max-width:760px) {
+        .welcome-next-step { margin-top:-6px; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 
 def render_header() -> None:
     logo_html = (
@@ -1619,6 +1687,7 @@ def section_start() -> None:
             <div class="welcome-time">⏱ Expected completion: 45–60 minutes</div>
           </div>
         </div>
+        <div class="welcome-next-step"><b>Start here:</b> enter your student details and select your practical pathway.</div>
         """,
         unsafe_allow_html=True,
     )
