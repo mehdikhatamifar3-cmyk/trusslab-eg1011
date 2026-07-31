@@ -29,7 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "19"
+APP_VERSION = "20"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -572,6 +572,162 @@ st.markdown(
 
       @media (max-width:980px) {
         [data-testid="stSidebar"] { min-width:220px; max-width:232px; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# Final interface refinements for TrussLab v20.
+st.markdown(
+    """
+    <style>
+      /* Reduce header-logo dominance while preserving JCU identity. */
+      .header-logo img { max-width:176px !important; }
+      .header-logo { min-height:68px; padding-right:20px; }
+
+      /* Modern, compact sidebar. */
+      [data-testid="stSidebar"] > div:first-child {
+        padding:0.72rem 0.78rem 1rem;
+      }
+      .sidebar-brand { margin-bottom:4px; padding-bottom:7px; }
+      .sidebar-brand .title { font-size:19px; }
+      .sidebar-brand .course { font-size:10.5px; }
+
+      .sidebar-progress-head { margin-top:3px; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div {
+        height:7px;
+        border-radius:999px;
+        background:#E7EDF3;
+        overflow:hidden;
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div {
+        border-radius:999px;
+        background:linear-gradient(90deg,#003B71 0%,#2F80ED 100%);
+        transition:width .45s ease;
+      }
+      .sidebar-progress-meta { margin-bottom:11px; }
+      .sidebar-workflow-title { margin-top:2px; }
+
+      [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        position:relative;
+        border-left:3px solid transparent;
+        border-radius:8px;
+        padding:0.43rem 0.42rem 0.43rem 0.50rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#EAF3FB;
+        border-left-color:#2F80ED;
+        box-shadow:0 2px 7px rgba(0,59,113,.07);
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color:#003B71;
+        font-weight:800;
+      }
+
+      .sidebar-pathway { margin-top:11px; padding-top:10px; }
+      .sidebar-summary-card {
+        margin-top:12px;
+        padding:11px 11px 10px;
+        border-radius:11px;
+        background:#F8FAFC;
+        box-shadow:0 2px 9px rgba(15,23,42,.045);
+      }
+      .sidebar-summary-title {
+        color:#25364A;
+        font-size:12px;
+        font-weight:800;
+        margin-bottom:7px;
+      }
+      .sidebar-summary-row {
+        display:grid;
+        grid-template-columns:18px 1fr;
+        gap:7px;
+        align-items:start;
+        color:#5A697A;
+        font-size:10.7px;
+        line-height:1.35;
+        margin:5px 0;
+      }
+      .sidebar-summary-row .icon { text-align:center; }
+      .sidebar-summary-row b { color:#26384A; font-weight:750; }
+      .sidebar-footer { margin-top:11px; }
+
+      /* Compact welcome dashboard below the page heading. */
+      .welcome-dashboard {
+        display:grid;
+        grid-template-columns:minmax(0,1.15fr) minmax(330px,.85fr);
+        gap:18px;
+        align-items:center;
+        margin:2px 0 18px;
+        padding:16px 18px;
+        border-radius:13px;
+        background:linear-gradient(135deg,#F7FAFD 0%,#FFFFFF 65%);
+        box-shadow:0 3px 14px rgba(15,23,42,.055);
+      }
+      .welcome-dashboard .eyebrow {
+        color:#2F80ED;
+        font-size:11px;
+        font-weight:800;
+        margin-bottom:4px;
+      }
+      .welcome-dashboard .title {
+        color:#172033;
+        font-size:20px;
+        font-weight:800;
+        line-height:1.2;
+      }
+      .welcome-dashboard .text {
+        color:#607083;
+        font-size:12.5px;
+        line-height:1.48;
+        margin-top:5px;
+      }
+      .welcome-list {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:7px 12px;
+      }
+      .welcome-item {
+        display:flex;
+        align-items:flex-start;
+        gap:7px;
+        color:#425466;
+        font-size:11.5px;
+        line-height:1.35;
+      }
+      .welcome-item .check { color:#27AE60; font-weight:900; }
+      .welcome-time {
+        grid-column:1 / -1;
+        margin-top:2px;
+        color:#526274;
+        font-size:11.5px;
+        font-weight:700;
+      }
+
+      /* Stronger contrast for the apparatus panel. */
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        background:#FFFFFF !important;
+        border:0 !important;
+        box-shadow:0 5px 18px rgba(15,23,42,.07) !important;
+      }
+      .apparatus-soft-note { margin-bottom:5px; }
+
+      /* Reduce density on the first page. */
+      .student-form-intro { margin-bottom:10px; }
+      .student-form-intro .text { max-width:520px; }
+      .submission-summary { font-size:11.2px; line-height:1.42; }
+      .mode-summary { font-size:11.5px; line-height:1.4; }
+
+      @media (max-width:1100px) {
+        .welcome-dashboard { grid-template-columns:1fr; }
+        .welcome-list { grid-template-columns:1fr 1fr; }
+      }
+      @media (max-width:760px) {
+        .welcome-list { grid-template-columns:1fr; }
+        .welcome-time { grid-column:auto; }
+        .header-logo img { max-width:190px !important; }
       }
     </style>
     """,
@@ -1234,7 +1390,7 @@ def section_start() -> None:
     render_section_heading(
         1,
         "Student details and practical pathway",
-        "Enter your official JCU details first, then select the pathway that applies to your practical session.",
+        "Enter the details from your JCU enrolment and select your practical pathway.",
         [
             "Enter your full name, official eight-digit JCU student ID and scheduled practical/tutorial group.",
             "Choose Physical laboratory when attending the apparatus session, or Online simulated practical when an in-person session cannot run.",
@@ -1244,11 +1400,31 @@ def section_start() -> None:
         "Changing the practical pathway later clears apparatus data and the physical safety acknowledgement.",
     )
 
-    left, right = st.columns([1.5, 1.0], gap="large")
+    st.markdown(
+        """
+        <div class="welcome-dashboard">
+          <div>
+            <div class="eyebrow">Welcome to TrussLab</div>
+            <div class="title">A guided practical from setup to submission</div>
+            <div class="text">Follow the workflow in the sidebar. Your entries are saved during the active session and inserted into a consistent Word report template.</div>
+          </div>
+          <div class="welcome-list">
+            <div class="welcome-item"><span class="check">✓</span><span>Analyse a pin-jointed truss</span></div>
+            <div class="welcome-item"><span class="check">✓</span><span>Collect five member readings</span></div>
+            <div class="welcome-item"><span class="check">✓</span><span>Compare experiment with theory</span></div>
+            <div class="welcome-item"><span class="check">✓</span><span>Generate a structured report</span></div>
+            <div class="welcome-time">⏱ Expected completion: 45–60 minutes</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([1.65, 1.0], gap="large")
     with left:
         st.markdown(
             '<div class="student-form-intro"><div class="title">Your details</div>'
-            '<div class="text">Complete this section before starting the pre-lab. Use the details shown in your JCU account and timetable.</div></div>',
+            '<div class="text">Enter the details from your JCU enrolment.</div></div>',
             unsafe_allow_html=True,
         )
         st.text_input("Student full name *", key="student_name")
@@ -1301,7 +1477,7 @@ def section_start() -> None:
     with right:
         with st.container(border=True):
             st.markdown(
-                '<div class="apparatus-soft-note">Use this schematic to identify the supports, central load and five instrumented members before beginning the pre-lab.</div>',
+                '<div class="apparatus-soft-note">Identify the supports, central load and five instrumented members.</div>',
                 unsafe_allow_html=True,
             )
             render_apparatus_overview()
@@ -2119,7 +2295,7 @@ def render_sidebar() -> str:
             )
         else:
             st.sidebar.markdown(
-                '<div class="sidebar-status-inline warn"><span class="dot"></span><span>Complete Safety before collecting laboratory data.</span></div>',
+                '<div class="sidebar-status-inline warn"><span class="dot"></span><span>Complete Safety before data collection.</span></div>',
                 unsafe_allow_html=True,
             )
     elif mode == ONLINE_MODE:
@@ -2129,7 +2305,20 @@ def render_sidebar() -> str:
         )
 
     st.sidebar.markdown(
-        f'<div class="sidebar-footer">Use the ❓ Help control on any page for step-by-step guidance.<br><br>TrussLab v{APP_VERSION}</div>',
+        """
+        <div class="sidebar-summary-card">
+          <div class="sidebar-summary-title">Practical summary</div>
+          <div class="sidebar-summary-row"><span class="icon">⏱</span><span><b>Duration</b><br>45–60 minutes</span></div>
+          <div class="sidebar-summary-row"><span class="icon">📄</span><span><b>Report</b><br>Word template generated</span></div>
+          <div class="sidebar-summary-row"><span class="icon">📊</span><span><b>Dataset</b><br>Student-specific online data</span></div>
+          <div class="sidebar-summary-row"><span class="icon">🎯</span><span><b>Objective</b><br>Member-force analysis</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.sidebar.markdown(
+        f'<div class="sidebar-footer">Use the ❓ Help control on any page for guidance.<br><br>TrussLab v{APP_VERSION}</div>',
         unsafe_allow_html=True,
     )
     return selected_page
