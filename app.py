@@ -81,6 +81,16 @@ EXPECTED_STATE = {
     "EB": "Tension",
 }
 
+SAFETY_CHECK_KEYS = (
+    "safety_attendance_briefing",
+    "safety_ppe_clothing",
+    "safety_equipment_inspection",
+    "safety_loading_controls",
+    "safety_supervision_housekeeping",
+    "safety_emergency_reporting",
+    "safety_final_declaration",
+)
+
 COLORS = {
     "member": "#334155",
     "joint": "#111827",
@@ -247,6 +257,18 @@ def initialise_state() -> None:
         "simulation_student_id": "",
         "clear_apparatus_requested": False,
         "apparatus_clear_notice": False,
+        "safety_complete": False,
+        "safety_acknowledged_at": "",
+        "safety_acknowledged_student_id": "",
+        "safety_acknowledged_student_name": "",
+        "safety_acknowledged_group": "",
+        "safety_attendance_briefing": False,
+        "safety_ppe_clothing": False,
+        "safety_equipment_inspection": False,
+        "safety_loading_controls": False,
+        "safety_supervision_housekeeping": False,
+        "safety_emergency_reporting": False,
+        "safety_final_declaration": False,
         "pre_q1": None,
         "pre_q2": None,
         "pre_q3": None,
@@ -280,6 +302,69 @@ def initialise_state() -> None:
 
 
 initialise_state()
+
+
+def safety_gate_is_open(
+    mode: str,
+    checklist_complete: bool,
+    confirmation_complete: bool,
+    current_student_id: str,
+    acknowledged_student_id: str,
+    current_student_name: str,
+    acknowledged_student_name: str,
+    current_group: str,
+    acknowledged_group: str,
+) -> bool:
+    """Pure safety-gate logic, separated for reliable testing."""
+    if mode == ONLINE_MODE:
+        return True
+    if mode != PHYSICAL_MODE:
+        return False
+    return bool(
+        checklist_complete
+        and confirmation_complete
+        and valid_jcu_student_id(current_student_id)
+        and normalise_jcu_student_id(current_student_id) == normalise_jcu_student_id(acknowledged_student_id)
+        and current_student_name.strip() == acknowledged_student_name.strip()
+        and current_group.strip() == acknowledged_group.strip()
+    )
+
+
+def _safety_checklist_complete() -> bool:
+    return all(bool(st.session_state.get(key, False)) for key in SAFETY_CHECK_KEYS)
+
+
+def safety_requirement_complete() -> bool:
+    return safety_gate_is_open(
+        st.session_state.get("practical_mode", MODE_OPTIONS[0]),
+        _safety_checklist_complete(),
+        bool(st.session_state.get("safety_complete", False)),
+        st.session_state.get("student_id", ""),
+        st.session_state.get("safety_acknowledged_student_id", ""),
+        st.session_state.get("student_name", ""),
+        st.session_state.get("safety_acknowledged_student_name", ""),
+        st.session_state.get("group", ""),
+        st.session_state.get("safety_acknowledged_group", ""),
+    )
+
+
+def reset_safety_acknowledgement() -> None:
+    st.session_state.safety_complete = False
+    st.session_state.safety_acknowledged_at = ""
+    st.session_state.safety_acknowledged_student_id = ""
+    st.session_state.safety_acknowledged_student_name = ""
+    st.session_state.safety_acknowledged_group = ""
+    for key in SAFETY_CHECK_KEYS:
+        st.session_state[key] = False
+
+
+def require_safety_before_main_practical() -> bool:
+    """Gate physical-laboratory sections until the attendance/safety step is complete."""
+    if st.session_state.get("practical_mode") == PHYSICAL_MODE and not safety_requirement_complete():
+        st.error("Complete Section 4: Lab attendance and safety before starting the apparatus data or later practical sections.")
+        st.info("Return to Section 4, review every safety item, tick the acknowledgements and confirm the safety declaration.")
+        return False
+    return True
 
 # Streamlit removes the state of widgets that are not rendered on the current
 # section. Reassigning ordinary widget keys interrupts that cleanup so entries
@@ -746,13 +831,14 @@ def section_start() -> None:
         mode = st.selectbox("Practical mode *", MODE_OPTIONS, key="practical_mode")
         if mode != st.session_state.previous_mode:
             clear_mode_dependent_work()
+            reset_safety_acknowledgement()
             st.session_state.previous_mode = mode
             st.info("The apparatus data were cleared because the practical mode changed.")
 
         if mode == PHYSICAL_MODE:
-            st.markdown('<div class="hint"><b>Physical laboratory:</b> use the real truss apparatus, observe the proving-ring / dial-gauge responses and enter the signed readings directly into the table in Section 4.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="hint"><b>Physical laboratory:</b> use the real truss apparatus, observe the proving-ring / dial-gauge responses and enter the signed readings directly into the table in Section 5.</div>', unsafe_allow_html=True)
         elif mode == ONLINE_MODE:
-            st.markdown('<div class="hint"><b>Online simulated practical:</b> the app generates one of four controlled datasets using your official JCU student ID. The online readings are reproducible for the same student.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="hint"><b>Online simulated practical:</b> the app generates a controlled, reproducible dataset using your official JCU student ID.</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="warning">Select a practical mode before entering apparatus data.</div>', unsafe_allow_html=True)
 
@@ -800,6 +886,124 @@ def section_predict() -> None:
     with col2:
         st.pyplot(plot_apparatus(30, False, "Use the truss geometry to support your predictions"), width="stretch")
 
+
+def section_safety() -> None:
+    st.subheader("4. Lab attendance and safety acknowledgement")
+    mode = st.session_state.get("practical_mode", MODE_OPTIONS[0])
+
+    if mode == MODE_OPTIONS[0]:
+        st.error("Return to Section 1 and select the practical mode first.")
+        return
+
+    if mode == ONLINE_MODE:
+        st.markdown(
+            '<div class="info"><b>Online pathway:</b> laboratory attendance is not required. You may continue directly to Section 5 after completing the pre-lab and prediction sections.</div>',
+            unsafe_allow_html=True,
+        )
+        st.caption("The physical-laboratory safety gate is automatically bypassed for the online simulated practical.")
+        return
+
+    st.markdown(
+        '<div class="warning"><b>Required before using the apparatus:</b> this checklist supports the local JCU laboratory/workshop induction. It does not replace the demonstrator briefing, laboratory signage, the local risk assessment or any task-specific instruction. Follow the stricter local requirement whenever it differs from this summary.</div>',
+        unsafe_allow_html=True,
+    )
+
+    identity_ready = bool(
+        st.session_state.get("student_name", "").strip()
+        and valid_jcu_student_id(st.session_state.get("student_id", ""))
+        and st.session_state.get("group", "").strip()
+    )
+    if not identity_ready:
+        st.error("Enter your full name, official eight-digit JCU student ID and practical group in Section 1 before confirming attendance and safety.")
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown(
+            """
+            <div class="card">
+            <h4 style="margin-top:0;color:#0B4F8A;">Entry, induction and PPE</h4>
+            <p style="margin-bottom:0;line-height:1.55;">JCU laboratory users must receive relevant local and task-specific induction. Required clothing and PPE are determined by the local hazards, risk assessment, signage and supervisor instructions.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.checkbox(
+            "I am physically present at my scheduled practical and have received the local safety briefing from the demonstrator.",
+            key="safety_attendance_briefing",
+        )
+        st.checkbox(
+            "I am wearing enclosed footwear and suitable clothing; long hair and loose items are secured, and I will use all PPE required by the entrance signage or demonstrator.",
+            key="safety_ppe_clothing",
+        )
+        st.checkbox(
+            "I will not bring or consume food or drink in the laboratory/workshop area.",
+            key="safety_equipment_inspection",
+        )
+
+    with right:
+        st.markdown(
+            """
+            <div class="card">
+            <h4 style="margin-top:0;color:#0B4F8A;">Equipment, loading and emergency response</h4>
+            <p style="margin-bottom:0;line-height:1.55;">Use the truss only as instructed, keep clear of moving or loaded parts, stop if anything appears unsafe and report hazards, incidents and near misses promptly.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.checkbox(
+            "Before loading, I will inspect the truss, supports, load hanger and gauges and immediately report damage, looseness, binding or any other unsafe condition.",
+            key="safety_loading_controls",
+        )
+        st.checkbox(
+            "I will keep hands and body clear of the load hanger and moving parts, add/remove masses carefully, and never exceed the approved 30 kg load.",
+            key="safety_supervision_housekeeping",
+        )
+        st.checkbox(
+            "I will work only under authorised supervision, keep the area and emergency access clear, and will not modify or misuse the apparatus.",
+            key="safety_emergency_reporting",
+        )
+
+    st.markdown(
+        '<div class="info"><b>Emergency and reporting:</b> know the local emergency exits and the locations of first aid and emergency equipment. Stop work and tell the demonstrator immediately if there is a hazard, incident, injury or near miss. JCU RiskWare is used for formal hazard and incident reporting when required.</div>',
+        unsafe_allow_html=True,
+    )
+    st.checkbox(
+        "I have reviewed the safety information above, understand the demonstrator remains in control of the activity, and agree to stop and ask for assistance whenever I am uncertain or observe an unsafe condition.",
+        key="safety_final_declaration",
+    )
+
+    checklist_complete = _safety_checklist_complete()
+    if st.session_state.get("safety_complete", False) and not checklist_complete:
+        st.session_state.safety_complete = False
+        st.session_state.safety_acknowledged_at = ""
+
+    if st.button("Confirm attendance and safety acknowledgement", type="primary", disabled=not identity_ready):
+        if not checklist_complete:
+            st.error("Review and tick every safety acknowledgement before continuing.")
+        else:
+            st.session_state.safety_complete = True
+            st.session_state.safety_acknowledged_at = datetime.now().strftime("%d %B %Y, %H:%M")
+            st.session_state.safety_acknowledged_student_id = normalise_jcu_student_id(st.session_state.student_id)
+            st.session_state.safety_acknowledged_student_name = st.session_state.student_name.strip()
+            st.session_state.safety_acknowledged_group = st.session_state.group.strip()
+            st.success("Attendance and safety acknowledgement recorded. You may continue to Section 5.")
+
+    if safety_requirement_complete():
+        st.success(f"Safety gate complete for {st.session_state.student_name.strip()} at {st.session_state.safety_acknowledged_at}.")
+    elif checklist_complete:
+        st.warning("All items are ticked, but you must click Confirm attendance and safety acknowledgement before continuing.")
+
+    with st.expander("JCU safety basis used for this checklist"):
+        st.markdown(
+            """
+            This practical checklist is based on JCU requirements for local/site-specific induction, authorised and inducted laboratory access, PPE and clothing determined by local risks and signage, safe procedures for plant/equipment, and reporting hazards or incidents through the supervisor and RiskWare when required.
+
+            - [JCU WHS-PRO-013 Laboratory Safety Procedure](https://www.jcu.edu.au/policy/university-management/whs-management/whs-pro-013-laboratory-safety-procedure)
+            - [JCU WHS-PRO-004 Training and Competency Procedure](https://www.jcu.edu.au/policy/university-management/whs-management/whs-pro-004-whs-training-and-competency-procedure)
+            - [JCU RiskWare information](https://www.jcu.edu.au/work-health-and-safety/report-and-manage-an-accident-incident-or-hazard/what-is-riskware)
+            """
+        )
+
 def set_lab_value(member: str, column: str, value: float) -> None:
     df = st.session_state.lab_data.copy()
     df.loc[df["Member"] == member, column] = value
@@ -808,10 +1012,12 @@ def set_lab_value(member: str, column: str, value: float) -> None:
 
 
 def section_data() -> None:
-    st.subheader("4. Apparatus and data collection")
+    st.subheader("5. Apparatus and data collection")
     mode = st.session_state.practical_mode
     if mode == MODE_OPTIONS[0]:
         st.error("Return to Section 1 and select either the physical or online practical mode.")
+        return
+    if not require_safety_before_main_practical():
         return
 
     if mode == PHYSICAL_MODE:
@@ -994,7 +1200,9 @@ def _part_b_entries_complete() -> bool:
 
 
 def section_calculate() -> None:
-    st.subheader("5. Selected theoretical calculations")
+    if not require_safety_before_main_practical():
+        return
+    st.subheader("6. Selected theoretical calculations")
     st.markdown('<div class="info">Enter the numerical results for the 30 kg case. The generated Word report provides a fixed, professionally formatted space for you to show the equations and complete working.</div>', unsafe_allow_html=True)
     st.pyplot(plot_apparatus(30, False, "Calculation case: 30 kg at joint B"), width="stretch")
     st.markdown("Use **positive for tension** and **negative for compression**.")
@@ -1015,9 +1223,11 @@ def section_calculate() -> None:
 
 
 def section_compare() -> None:
-    st.subheader("6. Compare results")
+    if not require_safety_before_main_practical():
+        return
+    st.subheader("7. Compare results")
     if not st.session_state.lab_complete:
-        st.warning("Complete and save the apparatus data in Section 4 before finalising this section.")
+        st.warning("Complete and save the apparatus data in Section 5 before finalising this section.")
     if USING_DEMO_CALIBRATION and st.session_state.practical_mode == PHYSICAL_MODE:
         st.markdown('<div class="warning">Demonstration calibration factors are active. The lecturer should replace calibration.csv with apparatus-specific factors before assessing physical measurements.</div>', unsafe_allow_html=True)
 
@@ -1034,7 +1244,7 @@ def section_compare() -> None:
         hide_index=True,
         width="stretch",
     )
-    st.caption("The comparison uses the theoretical forces entered in Section 5; the app does not substitute the lecturer solution.")
+    st.caption("The comparison uses the theoretical forces entered in Section 6; the app does not substitute the lecturer solution.")
     if not st.session_state.lab_data[["10 kg (mm)", "20 kg (mm)", "30 kg (mm)"]].isna().all().all():
         st.pyplot(plot_lab_readings(st.session_state.lab_data), width="stretch")
 
@@ -1059,7 +1269,9 @@ def section_compare() -> None:
 
 
 def section_part_b() -> None:
-    st.subheader("7. Part B - Safe load engineering challenge")
+    if not require_safety_before_main_practical():
+        return
+    st.subheader("8. Part B - Safe load engineering challenge")
     st.markdown(
         f'<div class="info"><b>Design question:</b> Why is the apparatus practical limited to approximately {APPROVED_MASS:.0f} kg? Use the graph and allowable values to determine the maximum safe mass. The allowable tension is {TENSION_LIMIT:.0f} N and allowable compression magnitude is {COMPRESSION_LIMIT:.0f} N.</div>',
         unsafe_allow_html=True,
@@ -1101,18 +1313,20 @@ def report_validation_issues() -> List[str]:
         issues.append("Enter all five pre-lab responses in Section 2.")
     if not _prediction_entries_complete():
         issues.append("Enter all five member predictions in Section 3.")
+    if not safety_requirement_complete():
+        issues.append("Complete the lab attendance and safety acknowledgement in Section 4.")
 
     if not _lab_entries_complete():
-        issues.append("Complete and save all apparatus readings and the return-to-zero observation in Section 4.")
+        issues.append("Complete and save all apparatus readings and the return-to-zero observation in Section 5.")
     if st.session_state.practical_mode == ONLINE_MODE and st.session_state.simulation_student_id != normalise_jcu_student_id(st.session_state.student_id):
         issues.append("The online data do not match the current JCU student ID. Clear and record the simulated readings again.")
 
     if not _calculation_entries_complete():
-        issues.append("Enter all five theoretical values in Section 5.")
+        issues.append("Enter all five theoretical values in Section 6.")
     if not _experimental_entry_complete():
-        issues.append("Enter the worked experimental-force value in Section 6.")
+        issues.append("Enter the worked experimental-force value in Section 7.")
     if not _part_b_entries_complete():
-        issues.append("Complete the three safe-load challenge responses in Section 7.")
+        issues.append("Complete the three safe-load challenge responses in Section 8.")
     if not st.session_state.get("review_declaration", False):
         issues.append("Tick the student review declaration on this page.")
     return issues
@@ -1143,7 +1357,7 @@ def safe_filename(text: str) -> str:
 def create_report_bytes() -> Tuple[bytes, str]:
     comparison = compare_table()
     mode_note = (
-        "Physical laboratory mode was used. Dial readings were entered from the apparatus."
+        f"Physical laboratory mode was used. Attendance and safety were acknowledged on {st.session_state.get('safety_acknowledged_at', 'not recorded')}. Dial readings were entered from the apparatus."
         if st.session_state.practical_mode == PHYSICAL_MODE
         else "Online simulated practical mode was used because an in-person apparatus session was unavailable. The dataset was generated reproducibly from the student ID."
     )
@@ -1180,6 +1394,8 @@ def create_report_bytes() -> Tuple[bytes, str]:
 
 
 def section_report() -> None:
+    if not require_safety_before_main_practical():
+        return
     st.session_state.prelab_complete = _prelab_entries_complete()
     st.session_state.prediction_complete = _prediction_entries_complete()
     st.session_state.lab_complete = _lab_entries_complete()
@@ -1187,7 +1403,7 @@ def section_report() -> None:
     st.session_state.experimental_calc_complete = _experimental_entry_complete()
     st.session_state.part_b_complete = _part_b_entries_complete()
 
-    st.subheader("8. Validate, generate and download the Word report")
+    st.subheader("9. Validate, generate and download the Word report")
     st.markdown(
         '<div class="info">The app inserts the student details, numerical results, tables and figures into a uniform Word report template. The student then completes the introduction, method, calculation working, analysis, discussion and conclusion in the fixed spaces provided.</div>',
         unsafe_allow_html=True,
@@ -1196,6 +1412,7 @@ def section_report() -> None:
         "Student details and mode": bool(st.session_state.student_name.strip() and valid_jcu_student_id(st.session_state.student_id) and st.session_state.group.strip() and st.session_state.practical_mode in (PHYSICAL_MODE, ONLINE_MODE)),
         "Pre-lab responses": _prelab_entries_complete(),
         "Member predictions entered": _prediction_entries_complete(),
+        "Lab attendance and safety": safety_requirement_complete(),
         "Apparatus data": _lab_entries_complete(),
         "Theoretical values entered": _calculation_entries_complete(),
         "Experimental-force value entered": _experimental_entry_complete(),
@@ -1242,24 +1459,30 @@ def section_report() -> None:
 render_header()
 
 st.sidebar.markdown("## TrussLab navigation")
-st.sidebar.caption("Version 11")
+st.sidebar.caption("Version 12")
 page = st.sidebar.radio(
     "Choose a section",
     [
         "1. Start and mode",
         "2. Prepare",
         "3. Predict",
-        "4. Apparatus and data",
-        "5. Calculate",
-        "6. Compare results",
-        "7. Part B safe-load challenge",
-        "8. Generate Word report",
+        "4. Lab attendance and safety",
+        "5. Apparatus and data",
+        "6. Calculate",
+        "7. Compare results",
+        "8. Part B safe-load challenge",
+        "9. Generate Word report",
     ],
 )
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Selected mode**")
 st.sidebar.caption(st.session_state.practical_mode)
+if st.session_state.practical_mode == PHYSICAL_MODE:
+    if safety_requirement_complete():
+        st.sidebar.success("Lab attendance and safety confirmed.")
+    else:
+        st.sidebar.warning("Complete Section 4 before using the apparatus.")
 if USING_DEMO_CALIBRATION:
     st.sidebar.warning("Demo calibration factors are active.")
 else:
@@ -1272,13 +1495,15 @@ elif page == "2. Prepare":
     section_prepare()
 elif page == "3. Predict":
     section_predict()
-elif page == "4. Apparatus and data":
+elif page == "4. Lab attendance and safety":
+    section_safety()
+elif page == "5. Apparatus and data":
     section_data()
-elif page == "5. Calculate":
+elif page == "6. Calculate":
     section_calculate()
-elif page == "6. Compare results":
+elif page == "7. Compare results":
     section_compare()
-elif page == "7. Part B safe-load challenge":
+elif page == "8. Part B safe-load challenge":
     section_part_b()
 else:
     section_report()
