@@ -29,7 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "16"
+APP_VERSION = "17"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -170,13 +170,17 @@ DESIGNER_NAME = "Dr Mehdi Khatamifar"
 st.markdown(
     """
     <style>
-      .stApp { background:#ffffff; }
-      .block-container { max-width:1480px; padding-top:1.0rem; padding-bottom:2.2rem; }
+      :root { --jcu-blue:#0B4F8A; --jcu-blue-dark:#073B68; --ink:#172033; --muted:#64748B; --line:#DCE4EC; }
+      html { scroll-behavior:smooth; }
+      .stApp { background:#ffffff; color:var(--ink); }
+      .block-container { max-width:1420px; padding-top:0.75rem; padding-bottom:2.5rem; }
       [data-testid="stSidebar"] {
-        background:linear-gradient(180deg,#f8fafc 0%,#eef3f7 55%,#e8eef4 100%);
-        border-right:1px solid #d5dde7;
+        background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 60%,#ECF1F6 100%);
+        border-right:1px solid #D7E0E9;
+        min-width:278px;
+        max-width:298px;
       }
-      [data-testid="stSidebar"] > div:first-child { padding-top:0.8rem; }
+      [data-testid="stSidebar"] > div:first-child { padding-top:0.7rem; }
       [data-testid="stSidebar"] [data-testid="stRadio"] > div { gap:0.28rem; }
       [data-testid="stSidebar"] [data-testid="stRadio"] label {
         background:rgba(255,255,255,0.88);
@@ -187,70 +191,52 @@ st.markdown(
         transition:all 0.16s ease;
       }
       [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-        border-color:#9bb8d2;
+        border-color:#A8BED1;
         background:#ffffff;
-        transform:translateX(2px);
       }
       [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
-        background:#e8f2ff;
-        border-color:#5b91bd;
-        box-shadow:inset 4px 0 0 #0B4F8A;
+        background:#EDF5FC;
+        border-color:#88ACCA;
+        box-shadow:inset 3px 0 0 var(--jcu-blue), 0 1px 3px rgba(15,23,42,0.04);
       }
       [data-testid="stSidebar"] [data-testid="stProgress"] > div > div { background-color:#0B4F8A; }
       .sidebar-brand {
-        position:relative;
-        background:linear-gradient(180deg,#ffffff 0%,#f4f8fc 100%);
-        color:#172033;
-        border-radius:13px;
-        padding:14px 15px 13px 17px;
-        margin:0 0 14px;
-        border:1px solid #d4e0eb;
-        box-shadow:0 4px 14px rgba(15,23,42,0.055);
-        overflow:hidden;
+        background:transparent;
+        color:var(--ink);
+        padding:5px 4px 13px 13px;
+        margin:1px 0 12px;
+        border-left:3px solid var(--jcu-blue);
       }
-      .sidebar-brand::before {
-        content:"";
-        position:absolute;
-        left:0;
-        top:0;
-        bottom:0;
-        width:4px;
-        background:#0B4F8A;
-      }
+      .sidebar-brand::before { display:none; }
       .sidebar-brand .course {
-        color:#5f7184;
+        color:#617386;
         font-size:9.5px;
         font-weight:800;
         letter-spacing:0.105em;
         text-transform:uppercase;
       }
       .sidebar-brand .title {
-        color:#0f3555;
-        font-size:22px;
+        color:#153A59;
+        font-size:21px;
         font-weight:800;
         line-height:1.08;
         margin-top:4px;
       }
       .sidebar-brand .subtitle {
-        color:#607083;
-        font-size:11.2px;
+        color:#68788A;
+        font-size:11px;
         line-height:1.42;
-        margin-top:7px;
+        margin-top:6px;
+        max-width:230px;
       }
-      .sidebar-brand .rule {
-        width:34px;
-        height:2px;
-        border-radius:999px;
-        background:#7fa9cc;
-        margin-top:10px;
-      }
+      .sidebar-brand .rule { display:none; }
       .sidebar-section-label {
         color:#526274; font-size:10px; font-weight:800; letter-spacing:0.12em;
         text-transform:uppercase; margin:14px 2px 7px;
       }
       .sidebar-card {
-        background:rgba(255,255,255,0.92); border:1px solid #dbe3ec; border-radius:11px;
-        padding:11px 12px; margin:8px 0; box-shadow:0 2px 8px rgba(15,23,42,0.035);
+        background:rgba(255,255,255,0.78); border:1px solid #DCE4EC; border-radius:10px;
+        padding:10px 11px; margin:7px 0;
       }
       .sidebar-card .label { color:#64748b; font-size:10px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; }
       .sidebar-card .value { color:#172033; font-size:13px; font-weight:700; margin-top:3px; }
@@ -265,13 +251,40 @@ st.markdown(
       .sidebar-footer { color:#7a8796; font-size:10.5px; line-height:1.45; margin-top:13px; padding:10px 3px 2px; border-top:1px solid #d7dfe8; }
       header[data-testid="stHeader"] { background:transparent; }
       #MainMenu, footer { visibility:hidden; }
-      .app-header { display:grid; grid-template-columns:280px 1fr 260px; gap:24px; align-items:center; padding:8px 8px 18px; }
-      .brand-box { border:1px solid #cbd5e1; border-radius:12px; background:#ffffff; padding:10px 14px; text-align:center; }
-      .brand-box img { max-width:100%; height:auto; }
-      .app-header-title h1 { margin:0; font-size:35px; line-height:1.05; color:#0f172a; }
-      .app-header-title p { margin:8px 0 0; color:#334155; line-height:1.45; font-size:15px; }
-      .app-header-author { text-align:right; color:#334155; font-size:13px; line-height:1.6; }
-      .app-divider { height:1px; background:#d9dee5; margin:2px 0 18px; }
+      .app-header {
+        display:grid;
+        grid-template-columns:235px minmax(0,1fr) 235px;
+        gap:28px;
+        align-items:center;
+        padding:8px 6px 16px;
+      }
+      .header-logo {
+        display:flex;
+        align-items:center;
+        min-height:82px;
+        padding:2px 26px 2px 2px;
+        border-right:1px solid #E0E7EE;
+      }
+      .header-logo img { display:block; width:100%; max-width:220px; height:auto; }
+      .app-header-title .kicker {
+        color:var(--jcu-blue);
+        font-size:10px;
+        font-weight:800;
+        letter-spacing:0.13em;
+        text-transform:uppercase;
+        margin-bottom:5px;
+      }
+      .app-header-title h1 { margin:0; font-size:34px; line-height:1.03; color:#111827; letter-spacing:-0.025em; }
+      .app-header-title p { margin:8px 0 0; color:#536273; line-height:1.48; font-size:14px; max-width:720px; }
+      .app-header-meta {
+        border-left:1px solid #E0E7EE;
+        padding-left:24px;
+        text-align:left;
+      }
+      .app-header-meta .label { color:#718096; font-size:9.5px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; }
+      .app-header-meta .title { color:#243447; font-size:13px; font-weight:750; line-height:1.35; margin-top:4px; }
+      .app-header-meta .designer { color:#7A8796; font-size:10.5px; line-height:1.45; margin-top:10px; }
+      .app-divider { height:1px; background:linear-gradient(90deg,#D8E2EB 0%,#EEF2F6 100%); margin:1px 0 19px; }
       .info { background:#e8f2ff; border:1px solid #c7ddf5; border-radius:10px; padding:13px 15px; color:#0f4c81; margin:8px 0 16px; }
       .hint { background:#ecfdf3; border:1px solid #bbf7d0; border-radius:10px; padding:11px 13px; color:#166534; margin:8px 0 14px; }
       .warning { background:#fff8e8; border:1px solid #f3d69b; border-radius:10px; padding:11px 13px; color:#7c4a03; margin:8px 0 14px; }
@@ -329,13 +342,69 @@ st.markdown(
       .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
       .detail-box { background:#f8fafc; border:1px solid #e1e7ee; border-radius:9px; padding:10px 11px; color:#526274; font-size:11px; line-height:1.5; }
       .detail-box b { color:#1f3347; }
+
+      /* Consistent controls and interaction styling */
+      .stButton > button, .stDownloadButton > button {
+        min-height:2.42rem;
+        border-radius:9px;
+        font-weight:700;
+        transition:background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+      }
+      .stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"] {
+        background:var(--jcu-blue);
+        border-color:var(--jcu-blue);
+        color:#ffffff;
+        box-shadow:0 2px 6px rgba(11,79,138,.16);
+      }
+      .stButton > button[kind="primary"]:hover, .stDownloadButton > button[kind="primary"]:hover {
+        background:var(--jcu-blue-dark);
+        border-color:var(--jcu-blue-dark);
+        box-shadow:0 3px 9px rgba(11,79,138,.22);
+      }
+      .stButton > button[kind="secondary"] {
+        background:#ffffff;
+        border-color:#CAD6E1;
+        color:#31465A;
+      }
+      .stButton > button[kind="secondary"]:hover { border-color:#88A9C4; color:var(--jcu-blue); }
+      [data-baseweb="input"] > div, [data-baseweb="select"] > div, [data-baseweb="textarea"] > div {
+        border-radius:9px !important;
+        border-color:#D5DEE7 !important;
+        background:#FBFCFD !important;
+      }
+      [data-baseweb="input"] > div:focus-within, [data-baseweb="select"] > div:focus-within, [data-baseweb="textarea"] > div:focus-within {
+        border-color:#6E9FC5 !important;
+        box-shadow:0 0 0 3px rgba(11,79,138,.09) !important;
+        background:#ffffff !important;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-color:#DCE4EC !important;
+        border-radius:14px !important;
+        box-shadow:0 3px 12px rgba(15,23,42,.035);
+        background:#ffffff;
+      }
+      div[data-testid="stAlert"] { border-radius:10px; }
+      div[data-testid="stDataEditor"] { border:1px solid #DCE4EC; border-radius:11px; overflow:hidden; }
+      div[data-testid="stMetric"] {
+        background:#ffffff;
+        border:1px solid #DFE7EE;
+        padding:12px 14px;
+        border-radius:11px;
+        box-shadow:0 2px 8px rgba(15,23,42,.025);
+      }
+      details[data-testid="stExpander"] { border-color:#DCE4EC !important; border-radius:10px !important; background:#FBFCFD; }
+      h1, h2, h3 { letter-spacing:-0.018em; }
+      h2, h3 { color:#172033; }
+      .stCaption { color:#748294; }
+
       @media (max-width:980px) {
         .start-hero { flex-direction:column; }
         .start-steps { justify-content:flex-start; min-width:0; }
         .detail-grid { grid-template-columns:1fr; }
-        .app-header { grid-template-columns:1fr; text-align:center; }
-        .app-header-author { text-align:center; }
-        .brand-box { max-width:280px; margin:auto; }
+        .app-header { grid-template-columns:1fr; text-align:center; gap:14px; }
+        .header-logo { justify-content:center; border-right:0; border-bottom:1px solid #E0E7EE; padding:2px 12px 15px; }
+        .header-logo img { max-width:235px; }
+        .app-header-meta { border-left:0; border-top:1px solid #E0E7EE; padding:13px 0 0; text-align:center; }
       }
     </style>
     """,
@@ -344,20 +413,24 @@ st.markdown(
 
 
 def render_header() -> None:
-    logo_html = f"<img src=\"data:image/png;base64,{JCU_LOGO_B64}\" alt=\"JCU logo\">" if JCU_LOGO_B64 else "<div style=\"font-size:28px;font-weight:800;color:#0B4F8A\">JCU</div>"
+    logo_html = (
+        f'<img src="data:image/png;base64,{JCU_LOGO_B64}" alt="James Cook University Australia">'
+        if JCU_LOGO_B64
+        else '<div style="font-size:28px;font-weight:800;color:#0B4F8A">JCU</div>'
+    )
     st.markdown(
         f"""
         <div class="app-header">
-          <div class="brand-box">{logo_html}</div>
+          <div class="header-logo">{logo_html}</div>
           <div class="app-header-title">
+            <div class="kicker">{CONFIG['course_code']} · {CONFIG['course_name']}</div>
             <h1>TrussLab</h1>
-            <p>A complete physical or online practical for tension, compression, zero-force members, selected equilibrium calculations and a short engineering safe-load decision.</p>
+            <p>Guided plane-truss testing, member-force analysis and structured report preparation for physical or online completion.</p>
           </div>
-          <div class="app-header-author">
-            {CONFIG['course_code']} {CONFIG['course_name']}<br>
-            <b>{CONFIG['practical_number']}</b><br>
-            {CONFIG['practical_title']}<br><br>
-            <b>Designed by</b><br>{DESIGNER_NAME}
+          <div class="app-header-meta">
+            <div class="label">{CONFIG['practical_number']}</div>
+            <div class="title">{CONFIG['practical_title']}</div>
+            <div class="designer">Designed by<br><b>{DESIGNER_NAME}</b></div>
           </div>
         </div>
         <div class="app-divider"></div>
@@ -962,13 +1035,13 @@ def section_start() -> None:
         <div class="start-hero">
           <div>
             <div class="eyebrow">Getting started</div>
-            <div class="headline">Set up your practical session</div>
-            <div class="description">Enter your official details, select the appropriate pathway, then work through the practical sections in order. Both pathways produce the same structured report template.</div>
+            <div class="headline">Set up your practical</div>
+            <div class="description">Enter your JCU details, choose the correct pathway and then complete the guided workflow in order. Your entries are retained as you move between sections.</div>
           </div>
           <div class="start-steps">
             <div class="start-step-chip"><span class="num">1</span> Enter details</div>
             <div class="start-step-chip"><span class="num">2</span> Choose pathway</div>
-            <div class="start-step-chip"><span class="num">3</span> Follow workflow</div>
+            <div class="start-step-chip"><span class="num">3</span> Begin practical</div>
           </div>
         </div>
         """,
