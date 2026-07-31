@@ -29,6 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
+APP_VERSION = "14"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -171,7 +172,69 @@ st.markdown(
     <style>
       .stApp { background:#ffffff; }
       .block-container { max-width:1480px; padding-top:1.0rem; padding-bottom:2.2rem; }
-      [data-testid="stSidebar"] { background:#eef2f6; border-right:1px solid #d8dee7; }
+      [data-testid="stSidebar"] {
+        background:linear-gradient(180deg,#f8fafc 0%,#eef3f7 55%,#e8eef4 100%);
+        border-right:1px solid #d5dde7;
+      }
+      [data-testid="stSidebar"] > div:first-child { padding-top:0.8rem; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] > div { gap:0.28rem; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        background:rgba(255,255,255,0.88);
+        border:1px solid #dbe3ec;
+        border-radius:10px;
+        padding:0.50rem 0.62rem;
+        margin:0.06rem 0;
+        transition:all 0.16s ease;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+        border-color:#9bb8d2;
+        background:#ffffff;
+        transform:translateX(2px);
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#e8f2ff;
+        border-color:#5b91bd;
+        box-shadow:inset 4px 0 0 #0B4F8A;
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div { background-color:#0B4F8A; }
+      .sidebar-brand {
+        background:linear-gradient(145deg,#0B4F8A 0%,#123E63 100%);
+        color:#ffffff;
+        border-radius:15px;
+        padding:14px 15px 13px;
+        margin:0 0 14px;
+        box-shadow:0 9px 24px rgba(15,79,128,0.17);
+        border:1px solid rgba(255,255,255,0.12);
+      }
+      .sidebar-brand-top { display:flex; align-items:center; gap:10px; }
+      .sidebar-logo {
+        width:40px; height:40px; border-radius:9px; background:#ffffff;
+        display:flex; align-items:center; justify-content:center; padding:4px;
+        box-shadow:0 2px 8px rgba(15,23,42,0.13);
+      }
+      .sidebar-logo img { max-width:100%; max-height:100%; object-fit:contain; }
+      .sidebar-brand .course { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; opacity:0.78; }
+      .sidebar-brand .title { font-size:21px; font-weight:800; line-height:1.05; margin-top:3px; }
+      .sidebar-brand .subtitle { font-size:11.5px; line-height:1.42; opacity:0.86; margin-top:9px; }
+      .sidebar-section-label {
+        color:#526274; font-size:10px; font-weight:800; letter-spacing:0.12em;
+        text-transform:uppercase; margin:14px 2px 7px;
+      }
+      .sidebar-card {
+        background:rgba(255,255,255,0.92); border:1px solid #dbe3ec; border-radius:11px;
+        padding:11px 12px; margin:8px 0; box-shadow:0 2px 8px rgba(15,23,42,0.035);
+      }
+      .sidebar-card .label { color:#64748b; font-size:10px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; }
+      .sidebar-card .value { color:#172033; font-size:13px; font-weight:700; margin-top:3px; }
+      .sidebar-card .meta { color:#64748b; font-size:11px; line-height:1.42; margin-top:5px; }
+      .sidebar-badge {
+        display:inline-block; padding:3px 8px; border-radius:999px;
+        background:#e8f2ff; color:#0B4F8A; border:1px solid #c7ddf5;
+        font-size:10px; font-weight:800; letter-spacing:0.04em; margin-top:7px;
+      }
+      .sidebar-status-good { color:#166534; background:#ecfdf3; border:1px solid #bbf7d0; border-radius:9px; padding:8px 10px; font-size:11px; margin:7px 0; }
+      .sidebar-status-warn { color:#854d0e; background:#fffbeb; border:1px solid #fde68a; border-radius:9px; padding:8px 10px; font-size:11px; margin:7px 0; }
+      .sidebar-footer { color:#7a8796; font-size:10.5px; line-height:1.45; margin-top:13px; padding:10px 3px 2px; border-top:1px solid #d7dfe8; }
       header[data-testid="stHeader"] { background:transparent; }
       #MainMenu, footer { visibility:hidden; }
       .app-header { display:grid; grid-template-columns:280px 1fr 260px; gap:24px; align-items:center; padding:8px 8px 18px; }
@@ -1271,7 +1334,7 @@ def section_compare() -> None:
 def section_part_b() -> None:
     if not require_safety_before_main_practical():
         return
-    st.subheader("8. Part B - Safe load engineering challenge")
+    st.subheader("8. Engineering challenge: safe-load assessment")
     st.markdown(
         f'<div class="info"><b>Design question:</b> Why is the apparatus practical limited to approximately {APPROVED_MASS:.0f} kg? Use the graph and allowable values to determine the maximum safe mass. The allowable tension is {TENSION_LIMIT:.0f} N and allowable compression magnitude is {COMPRESSION_LIMIT:.0f} N.</div>',
         unsafe_allow_html=True,
@@ -1294,9 +1357,9 @@ def section_part_b() -> None:
     complete = _part_b_entries_complete()
     st.session_state.part_b_complete = complete
     if complete:
-        st.success("The Part B numerical responses have been entered and saved.")
+        st.success("The engineering-challenge responses have been entered and saved.")
     else:
-        st.caption("Complete the three Part B responses. The derivation and engineering interpretation are completed in the generated Word report.")
+        st.caption("Complete the three engineering-challenge responses. The derivation and engineering interpretation are completed in the generated Word report.")
 
 
 def report_validation_issues() -> List[str]:
@@ -1326,7 +1389,7 @@ def report_validation_issues() -> List[str]:
     if not _experimental_entry_complete():
         issues.append("Enter the worked experimental-force value in Section 7.")
     if not _part_b_entries_complete():
-        issues.append("Complete the three safe-load challenge responses in Section 8.")
+        issues.append("Complete the three engineering-challenge responses in Section 8.")
     if not st.session_state.get("review_declaration", False):
         issues.append("Tick the student review declaration on this page.")
     return issues
@@ -1416,7 +1479,7 @@ def section_report() -> None:
         "Apparatus data": _lab_entries_complete(),
         "Theoretical values entered": _calculation_entries_complete(),
         "Experimental-force value entered": _experimental_entry_complete(),
-        "Part B numerical responses": _part_b_entries_complete(),
+        "Engineering challenge responses": _part_b_entries_complete(),
     }
     completed = sum(checks.values())
     st.progress(completed / len(checks), text=f"{completed} of {len(checks)} practical components complete")
@@ -1458,52 +1521,128 @@ def section_report() -> None:
 
 render_header()
 
-st.sidebar.markdown("## TrussLab navigation")
-st.sidebar.caption("Version 12")
-page = st.sidebar.radio(
-    "Choose a section",
-    [
-        "1. Start and mode",
-        "2. Prepare",
-        "3. Predict",
-        "4. Lab attendance and safety",
-        "5. Apparatus and data",
-        "6. Calculate",
-        "7. Compare results",
-        "8. Part B safe-load challenge",
-        "9. Generate Word report",
-    ],
-)
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Selected mode**")
-st.sidebar.caption(st.session_state.practical_mode)
-if st.session_state.practical_mode == PHYSICAL_MODE:
-    if safety_requirement_complete():
-        st.sidebar.success("Lab attendance and safety confirmed.")
-    else:
-        st.sidebar.warning("Complete Section 4 before using the apparatus.")
-if USING_DEMO_CALIBRATION:
-    st.sidebar.warning("Demo calibration factors are active.")
-else:
-    st.sidebar.success("Calibration file loaded.")
-st.sidebar.caption("Student entries persist across sections. The app checks completion only and generates a uniform Word report template. Students complete the shaded writing spaces and submit the finished DOCX through LearnJCU.")
+def render_sidebar() -> str:
+    logo_html = (
+        f'<img src="data:image/png;base64,{JCU_LOGO_B64}" alt="JCU">'
+        if JCU_LOGO_B64 else '<span style="color:#0B4F8A;font-weight:900;">JCU</span>'
+    )
+    st.sidebar.markdown(
+        f"""
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-top">
+            <div class="sidebar-logo">{logo_html}</div>
+            <div>
+              <div class="course">EG1011 · Statics and Dynamics</div>
+              <div class="title">TrussLab</div>
+            </div>
+          </div>
+          <div class="subtitle">Guided plane-truss practical, analysis and report preparation</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-if page == "1. Start and mode":
+    sections = [
+        "1. Student details",
+        "2. Pre-lab preparation",
+        "3. Member predictions",
+        "4. Safety induction",
+        "5. Data collection",
+        "6. Truss calculations",
+        "7. Results analysis",
+        "8. Engineering challenge",
+        "9. Report submission",
+    ]
+
+    st.sidebar.markdown('<div class="sidebar-section-label">Practical workflow</div>', unsafe_allow_html=True)
+    selected_page = st.sidebar.radio(
+        "Choose a section",
+        sections,
+        label_visibility="collapsed",
+    )
+
+    start_complete = (
+        bool(st.session_state.student_name.strip())
+        and valid_jcu_student_id(st.session_state.student_id)
+        and bool(st.session_state.group.strip())
+        and st.session_state.practical_mode in (PHYSICAL_MODE, ONLINE_MODE)
+    )
+    workflow_checks = [
+        start_complete,
+        _prelab_entries_complete(),
+        _prediction_entries_complete(),
+        safety_requirement_complete(),
+        _lab_entries_complete(),
+        _calculation_entries_complete(),
+        _experimental_entry_complete(),
+        _part_b_entries_complete(),
+        bool(st.session_state.report_bytes),
+    ]
+    completed = sum(bool(value) for value in workflow_checks)
+    progress = completed / len(workflow_checks)
+
+    st.sidebar.markdown('<div class="sidebar-section-label">Practical status</div>', unsafe_allow_html=True)
+    st.sidebar.progress(progress)
+    st.sidebar.markdown(
+        f'<div class="sidebar-card"><div class="label">Overall progress</div>'
+        f'<div class="value">{completed} of {len(workflow_checks)} stages complete</div>'
+        f'<div class="meta">Your entries are retained while you move between sections.</div>'
+        f'<div class="sidebar-badge">{round(progress * 100)}% COMPLETE</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    mode = st.session_state.practical_mode
+    mode_value = "Choose in Section 1" if mode == MODE_OPTIONS[0] else mode
+    st.sidebar.markdown(
+        f'<div class="sidebar-card"><div class="label">Selected pathway</div>'
+        f'<div class="value">{mode_value}</div>'
+        f'<div class="meta">Physical and online pathways use the same report structure.</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    if mode == PHYSICAL_MODE:
+        if safety_requirement_complete():
+            st.sidebar.markdown(
+                '<div class="sidebar-status-good"><b>Safety induction complete</b><br>Data collection and analysis sections are available.</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.sidebar.markdown(
+                '<div class="sidebar-status-warn"><b>Safety induction required</b><br>Complete Section 4 before accessing laboratory data collection.</div>',
+                unsafe_allow_html=True,
+            )
+    elif mode == ONLINE_MODE:
+        st.sidebar.markdown(
+            '<div class="sidebar-status-good"><b>Online pathway selected</b><br>Use your official JCU student ID to generate reproducible readings.</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.sidebar.markdown(
+        f'<div class="sidebar-footer"><b>Submission:</b> generate the Word template, complete the shaded writing spaces, and submit the final DOCX through LearnJCU.'
+        f'<br><br>TrussLab v{APP_VERSION}</div>',
+        unsafe_allow_html=True,
+    )
+    return selected_page
+
+
+page = render_sidebar()
+
+if page == "1. Student details":
     section_start()
-elif page == "2. Prepare":
+elif page == "2. Pre-lab preparation":
     section_prepare()
-elif page == "3. Predict":
+elif page == "3. Member predictions":
     section_predict()
-elif page == "4. Lab attendance and safety":
+elif page == "4. Safety induction":
     section_safety()
-elif page == "5. Apparatus and data":
+elif page == "5. Data collection":
     section_data()
-elif page == "6. Calculate":
+elif page == "6. Truss calculations":
     section_calculate()
-elif page == "7. Compare results":
+elif page == "7. Results analysis":
     section_compare()
-elif page == "8. Part B safe-load challenge":
+elif page == "8. Engineering challenge":
     section_part_b()
 else:
     section_report()
