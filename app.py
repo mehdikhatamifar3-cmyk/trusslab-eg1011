@@ -29,7 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "18"
+APP_VERSION = "19"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -431,6 +431,147 @@ st.markdown(
         .header-logo { justify-content:center; border-right:0; border-bottom:1px solid #E0E7EE; padding:2px 12px 15px; }
         .header-logo img { max-width:235px; }
         .app-header-meta { border-left:0; border-top:1px solid #E0E7EE; padding:13px 0 0; text-align:center; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Professional interface refinements for TrussLab v19.
+st.markdown(
+    """
+    <style>
+      :root {
+        --jcu-blue:#003B71;
+        --jcu-blue-dark:#002B52;
+        --secondary:#2F80ED;
+        --success:#27AE60;
+        --warning-ui:#F2994A;
+        --neutral:#F8FAFC;
+        --ink:#172033;
+        --muted:#64748B;
+        --line:#E3EAF0;
+      }
+
+      /* A lighter, narrower sidebar that supports rather than dominates. */
+      [data-testid="stSidebar"] {
+        background:#FFFFFF;
+        border-right:1px solid var(--line);
+        min-width:236px;
+        max-width:248px;
+      }
+      [data-testid="stSidebar"] > div:first-child { padding:0.70rem 0.78rem 1rem; }
+      .sidebar-brand {
+        padding:3px 2px 10px;
+        margin:0 0 7px;
+        border-left:0;
+        background:transparent;
+      }
+      .sidebar-brand .title { color:var(--jcu-blue); font-size:20px; margin:0; }
+      .sidebar-brand .course {
+        color:#526274; font-size:11px; font-weight:700; letter-spacing:0;
+        text-transform:none; margin-top:3px;
+      }
+      .sidebar-brand .subtitle { display:none; }
+
+      .sidebar-progress-head {
+        display:flex; align-items:center; justify-content:space-between;
+        color:#243447; font-size:14px; font-weight:800; margin:5px 1px 5px;
+      }
+      .sidebar-progress-head span { color:var(--jcu-blue); font-size:13px; }
+      .sidebar-progress-meta { color:#738194; font-size:11px; margin:4px 1px 13px; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] { margin-bottom:0; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div { background:#E7EDF3; height:6px; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div { background:var(--secondary); }
+
+      .sidebar-workflow-title { color:#334155; font-size:13px; font-weight:800; margin:5px 1px 6px; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] > div {
+        gap:0; position:relative; padding-left:1px;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        background:transparent; border:0; border-radius:7px;
+        padding:0.42rem 0.32rem; margin:0; min-height:0;
+        transition:background-color .13s ease,color .13s ease;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+        background:#F3F7FB; border:0;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#EEF5FB; border:0; box-shadow:none;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color:var(--jcu-blue); font-weight:800;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child { display:none !important; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        color:#526274; font-size:12.5px; line-height:1.28; margin:0;
+      }
+
+      .sidebar-pathway {
+        margin-top:14px; padding-top:11px; border-top:1px solid var(--line);
+        color:#718096; font-size:11px; line-height:1.45;
+      }
+      .sidebar-pathway strong { display:block; color:#26384A; font-size:12.5px; margin-top:2px; }
+      .sidebar-status-inline {
+        display:flex; gap:7px; align-items:flex-start; margin-top:8px;
+        color:#526274; font-size:11px; line-height:1.38;
+      }
+      .sidebar-status-inline .dot {
+        flex:0 0 auto; width:8px; height:8px; border-radius:50%; margin-top:4px; background:#94A3B8;
+      }
+      .sidebar-status-inline.good .dot { background:var(--success); }
+      .sidebar-status-inline.warn .dot { background:var(--warning-ui); }
+      .sidebar-footer {
+        border-top:0; margin-top:13px; padding:0 1px; color:#7B8794;
+        font-size:10.5px; line-height:1.45;
+      }
+
+      /* Consistent type hierarchy. */
+      .app-header-title h1 { font-size:36px; }
+      .page-heading .section-title { font-size:24px; }
+      .page-heading .section-label {
+        color:var(--jcu-blue); font-size:12px; font-weight:700; letter-spacing:0; text-transform:none;
+      }
+      .panel-heading, .apparatus-title { font-size:18px; }
+      .page-heading .section-summary, .app-header-title p { font-size:14px; }
+      .panel-subheading, .apparatus-caption, .small-note { font-size:12px; }
+
+      /* Fewer boxes: use whitespace, tonal surfaces and accent edges. */
+      .info { background:#EFF6FF; border:0; border-left:4px solid var(--secondary); color:#234E75; }
+      .hint, .good { background:#ECFDF3; border:0; border-left:4px solid var(--success); color:#17663A; }
+      .warning { background:#FFF8EC; border:0; border-left:4px solid var(--warning-ui); color:#71440A; }
+      .card { border:0; border-radius:10px; background:var(--neutral); box-shadow:none; }
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        border:0 !important; border-radius:14px !important; background:var(--neutral);
+        box-shadow:none;
+      }
+      .start-id-note {
+        background:transparent; border:0; border-left:3px solid var(--warning-ui);
+        border-radius:0; padding:6px 10px; margin:3px 0 10px;
+      }
+      .mode-summary {
+        background:#F2F7FC; border:0; border-left:3px solid var(--secondary); border-radius:7px;
+      }
+      .submission-summary {
+        background:transparent; border:0; border-top:1px solid var(--line); border-radius:0;
+        padding:11px 0 0; margin-top:15px;
+      }
+      .apparatus-badge { background:#EEF4F9; border:0; color:#425466; }
+      .detail-box { background:#FFFFFF; border:0; box-shadow:0 1px 5px rgba(15,23,42,.04); }
+      div[data-testid="stMetric"] { border:0; background:var(--neutral); box-shadow:none; }
+      div[data-testid="stDataEditor"] { border:1px solid var(--line); box-shadow:none; }
+      details[data-testid="stExpander"] { border:0 !important; background:var(--neutral); }
+
+      /* Keep the first page spacious and visually prioritise data entry. */
+      .student-form-intro { margin:0 0 15px; }
+      .student-form-intro .title { color:#172033; font-size:18px; font-weight:800; }
+      .student-form-intro .text { color:#64748B; font-size:12px; line-height:1.5; margin-top:4px; }
+      .apparatus-soft-note {
+        color:#526274; font-size:11.5px; line-height:1.45; margin:0 0 8px;
+      }
+
+      @media (max-width:980px) {
+        [data-testid="stSidebar"] { min-width:220px; max-width:232px; }
       }
     </style>
     """,
@@ -1093,76 +1234,76 @@ def section_start() -> None:
     render_section_heading(
         1,
         "Student details and practical pathway",
-        "Enter your official JCU details, choose the correct pathway and review how the practical and report workflow operate.",
+        "Enter your official JCU details first, then select the pathway that applies to your practical session.",
         [
             "Enter your full name, official eight-digit JCU student ID and scheduled practical/tutorial group.",
             "Choose Physical laboratory when attending the apparatus session, or Online simulated practical when an in-person session cannot run.",
-            "Review the apparatus overview and the final submission requirement before continuing.",
+            "Review the apparatus overview and final submission requirement before continuing.",
         ],
         "All three identity fields are complete and one practical pathway is selected.",
         "Changing the practical pathway later clears apparatus data and the physical safety acknowledgement.",
     )
 
-    left, right = st.columns([0.88, 1.12], gap="large")
+    left, right = st.columns([1.5, 1.0], gap="large")
     with left:
-        with st.container(border=True):
+        st.markdown(
+            '<div class="student-form-intro"><div class="title">Your details</div>'
+            '<div class="text">Complete this section before starting the pre-lab. Use the details shown in your JCU account and timetable.</div></div>',
+            unsafe_allow_html=True,
+        )
+        st.text_input("Student full name *", key="student_name")
+        st.text_input(
+            "JCU student ID (8 digits) *",
+            key="student_id",
+            max_chars=8,
+            placeholder="Example: 12345678",
+            help="Use the official eight-digit student number shown in your JCU account.",
+        )
+        if st.session_state.student_id and not valid_jcu_student_id(st.session_state.student_id):
+            st.error("Enter your official eight-digit JCU student ID using numbers only.")
+        elif valid_jcu_student_id(st.session_state.student_id):
+            st.success("JCU student ID format accepted.")
+
+        st.text_input("Practical/tutorial group *", key="group", placeholder="Example: Tuesday 2 pm")
+        mode = st.selectbox("Practical pathway *", MODE_OPTIONS, key="practical_mode")
+        if mode != st.session_state.previous_mode:
+            clear_mode_dependent_work()
+            reset_safety_acknowledgement()
+            st.session_state.previous_mode = mode
+            st.info("The apparatus data were cleared because the practical pathway changed.")
+
+        if mode == PHYSICAL_MODE:
             st.markdown(
-                '<div class="panel-heading">Student and session details</div>'
-                '<div class="panel-subheading">Use the details associated with your JCU enrolment and scheduled practical group.</div>',
+                '<div class="mode-summary"><b>Physical laboratory</b><br>'
+                'Attend the scheduled session, complete the safety induction, use the apparatus and enter the signed readings in Data collection.</div>',
                 unsafe_allow_html=True,
             )
-            st.text_input("Student full name *", key="student_name")
+        elif mode == ONLINE_MODE:
             st.markdown(
-                '<div class="start-id-note"><b>Use your official JCU student ID.</b> '
-                'Enter the eight-digit student number shown in your JCU account—not your email address, initials or a made-up number.</div>',
+                '<div class="mode-summary"><b>Online simulated practical</b><br>'
+                'The app creates a controlled, reproducible dataset from your official JCU student ID.</div>',
                 unsafe_allow_html=True,
             )
-            st.text_input(
-                "JCU student ID (8 digits) *",
-                key="student_id",
-                max_chars=8,
-                placeholder="Example: 12345678",
-            )
-            if st.session_state.student_id and not valid_jcu_student_id(st.session_state.student_id):
-                st.error("Enter your official eight-digit JCU student ID using numbers only.")
-            elif valid_jcu_student_id(st.session_state.student_id):
-                st.success("JCU student ID format accepted.")
-
-            st.text_input("Practical/tutorial group *", key="group", placeholder="Example: Tuesday 2 pm")
-            mode = st.selectbox("Practical pathway *", MODE_OPTIONS, key="practical_mode")
-            if mode != st.session_state.previous_mode:
-                clear_mode_dependent_work()
-                reset_safety_acknowledgement()
-                st.session_state.previous_mode = mode
-                st.info("The apparatus data were cleared because the practical pathway changed.")
-
-            if mode == PHYSICAL_MODE:
-                st.markdown(
-                    '<div class="mode-summary"><b>Physical laboratory:</b> attend the scheduled session, '
-                    'complete the safety induction, use the apparatus and enter the signed readings in Section 5.</div>',
-                    unsafe_allow_html=True,
-                )
-            elif mode == ONLINE_MODE:
-                st.markdown(
-                    '<div class="mode-summary"><b>Online simulated practical:</b> the app creates a controlled, '
-                    'reproducible dataset from your official JCU student ID.</div>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    '<div class="mode-summary"><b>Choose a pathway</b> before continuing to apparatus data collection.</div>',
-                    unsafe_allow_html=True,
-                )
-
+        else:
             st.markdown(
-                '<div class="submission-summary"><b>Final submission:</b> TrussLab generates a uniform eight-page '
-                'Word template containing your data, numerical results, tables and figures. Complete the shaded writing '
-                'spaces in your own words and submit the finished DOCX through LearnJCU.</div>',
+                '<div class="mode-summary"><b>Select a pathway</b><br>'
+                'Choose the option confirmed by your lecturer or demonstrator before continuing.</div>',
                 unsafe_allow_html=True,
             )
+
+        st.markdown(
+            '<div class="submission-summary"><b>What you submit</b><br>'
+            'TrussLab generates a uniform eight-page Word template containing your data, calculations, tables and figures. '
+            'Complete the shaded writing spaces in your own words and submit the finished DOCX through LearnJCU.</div>',
+            unsafe_allow_html=True,
+        )
 
     with right:
         with st.container(border=True):
+            st.markdown(
+                '<div class="apparatus-soft-note">Use this schematic to identify the supports, central load and five instrumented members before beginning the pre-lab.</div>',
+                unsafe_allow_html=True,
+            )
             render_apparatus_overview()
 
 def section_prepare() -> None:
@@ -1875,18 +2016,6 @@ render_header()
 
 
 def render_sidebar() -> str:
-    st.sidebar.markdown(
-        """
-        <div class="sidebar-brand">
-          <div class="course">EG1011 · Statics and Dynamics</div>
-          <div class="title">TrussLab</div>
-          <div class="subtitle">Plane-truss practical, guided analysis and report preparation</div>
-          <div class="rule"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     sections = [
         "1. Student details",
         "2. Pre-lab preparation",
@@ -1898,13 +2027,17 @@ def render_sidebar() -> str:
         "8. Engineering challenge",
         "9. Report submission",
     ]
-
-    st.sidebar.markdown('<div class="sidebar-section-label">Practical workflow</div>', unsafe_allow_html=True)
-    selected_page = st.sidebar.radio(
-        "Choose a section",
-        sections,
-        label_visibility="collapsed",
-    )
+    short_names = {
+        sections[0]: "Student details",
+        sections[1]: "Pre-lab",
+        sections[2]: "Predictions",
+        sections[3]: "Safety",
+        sections[4]: "Data collection",
+        sections[5]: "Calculations",
+        sections[6]: "Analysis",
+        sections[7]: "Challenge",
+        sections[8]: "Submission",
+    }
 
     start_complete = (
         bool(st.session_state.student_name.strip())
@@ -1926,46 +2059,77 @@ def render_sidebar() -> str:
     completed = sum(bool(value) for value in workflow_checks)
     progress = completed / len(workflow_checks)
 
-    st.sidebar.markdown('<div class="sidebar-section-label">Practical status</div>', unsafe_allow_html=True)
-    st.sidebar.progress(progress)
+    current_page = st.session_state.get("sidebar_navigation", sections[0])
+    if current_page not in sections:
+        current_page = sections[0]
+        st.session_state.sidebar_navigation = current_page
+    current_index = sections.index(current_page)
+
     st.sidebar.markdown(
-        f'<div class="sidebar-card"><div class="label">Overall progress</div>'
-        f'<div class="value">{completed} of {len(workflow_checks)} stages complete</div>'
-        f'<div class="meta">Your entries are retained while you move between sections.</div>'
-        f'<div class="sidebar-badge">{round(progress * 100)}% COMPLETE</div></div>',
+        """
+        <div class="sidebar-brand">
+          <div class="title">TrussLab</div>
+          <div class="course">EG1011 · Statics and Dynamics</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    mode = st.session_state.practical_mode
-    mode_value = "Choose in Section 1" if mode == MODE_OPTIONS[0] else mode
     st.sidebar.markdown(
-        f'<div class="sidebar-card"><div class="label">Selected pathway</div>'
-        f'<div class="value">{mode_value}</div>'
-        f'<div class="meta">Physical and online pathways use the same report structure.</div></div>',
+        f'<div class="sidebar-progress-head"><div>Progress</div><span>{round(progress * 100)}%</span></div>',
+        unsafe_allow_html=True,
+    )
+    st.sidebar.progress(progress)
+    st.sidebar.markdown(
+        f'<div class="sidebar-progress-meta">Stage {current_index + 1} of {len(sections)} · {completed} complete</div>',
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown('<div class="sidebar-workflow-title">Practical workflow</div>', unsafe_allow_html=True)
+
+    def timeline_label(section: str) -> str:
+        index = sections.index(section)
+        if section == current_page:
+            marker = "●"
+        elif workflow_checks[index]:
+            marker = "✅"
+        else:
+            marker = "○"
+        return f"{marker}  {short_names[section]}"
+
+    selected_page = st.sidebar.radio(
+        "Choose a section",
+        sections,
+        key="sidebar_navigation",
+        format_func=timeline_label,
+        label_visibility="collapsed",
+    )
+
+    mode = st.session_state.practical_mode
+    mode_value = "Not selected" if mode == MODE_OPTIONS[0] else mode
+    st.sidebar.markdown(
+        f'<div class="sidebar-pathway">Current pathway<strong>{mode_value}</strong></div>',
         unsafe_allow_html=True,
     )
 
     if mode == PHYSICAL_MODE:
         if safety_requirement_complete():
             st.sidebar.markdown(
-                '<div class="sidebar-status-good"><b>Safety induction complete</b><br>Data collection and analysis sections are available.</div>',
+                '<div class="sidebar-status-inline good"><span class="dot"></span><span>Safety induction complete</span></div>',
                 unsafe_allow_html=True,
             )
         else:
             st.sidebar.markdown(
-                '<div class="sidebar-status-warn"><b>Safety induction required</b><br>Complete Section 4 before accessing laboratory data collection.</div>',
+                '<div class="sidebar-status-inline warn"><span class="dot"></span><span>Complete Safety before collecting laboratory data.</span></div>',
                 unsafe_allow_html=True,
             )
     elif mode == ONLINE_MODE:
         st.sidebar.markdown(
-            '<div class="sidebar-status-good"><b>Online pathway selected</b><br>Use your official JCU student ID to generate reproducible readings.</div>',
+            '<div class="sidebar-status-inline good"><span class="dot"></span><span>Online pathway active</span></div>',
             unsafe_allow_html=True,
         )
 
     st.sidebar.markdown(
-        f'<div class="sidebar-footer"><b>Need guidance?</b> Use the ❓ Help button at the top of each section.'
-        f'<br><br><b>Submission:</b> generate the Word template, complete the shaded writing spaces, and submit the final DOCX through LearnJCU.'
-        f'<br><br>TrussLab v{APP_VERSION}</div>',
+        f'<div class="sidebar-footer">Use the ❓ Help control on any page for step-by-step guidance.<br><br>TrussLab v{APP_VERSION}</div>',
         unsafe_allow_html=True,
     )
     return selected_page
