@@ -198,24 +198,52 @@ st.markdown(
       }
       [data-testid="stSidebar"] [data-testid="stProgress"] > div > div { background-color:#0B4F8A; }
       .sidebar-brand {
-        background:linear-gradient(145deg,#0B4F8A 0%,#123E63 100%);
-        color:#ffffff;
-        border-radius:15px;
-        padding:14px 15px 13px;
+        position:relative;
+        background:linear-gradient(180deg,#ffffff 0%,#f4f8fc 100%);
+        color:#172033;
+        border-radius:13px;
+        padding:14px 15px 13px 17px;
         margin:0 0 14px;
-        box-shadow:0 9px 24px rgba(15,79,128,0.17);
-        border:1px solid rgba(255,255,255,0.12);
+        border:1px solid #d4e0eb;
+        box-shadow:0 4px 14px rgba(15,23,42,0.055);
+        overflow:hidden;
       }
-      .sidebar-brand-top { display:flex; align-items:center; gap:10px; }
-      .sidebar-logo {
-        width:40px; height:40px; border-radius:9px; background:#ffffff;
-        display:flex; align-items:center; justify-content:center; padding:4px;
-        box-shadow:0 2px 8px rgba(15,23,42,0.13);
+      .sidebar-brand::before {
+        content:"";
+        position:absolute;
+        left:0;
+        top:0;
+        bottom:0;
+        width:4px;
+        background:#0B4F8A;
       }
-      .sidebar-logo img { max-width:100%; max-height:100%; object-fit:contain; }
-      .sidebar-brand .course { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; opacity:0.78; }
-      .sidebar-brand .title { font-size:21px; font-weight:800; line-height:1.05; margin-top:3px; }
-      .sidebar-brand .subtitle { font-size:11.5px; line-height:1.42; opacity:0.86; margin-top:9px; }
+      .sidebar-brand .course {
+        color:#5f7184;
+        font-size:9.5px;
+        font-weight:800;
+        letter-spacing:0.105em;
+        text-transform:uppercase;
+      }
+      .sidebar-brand .title {
+        color:#0f3555;
+        font-size:22px;
+        font-weight:800;
+        line-height:1.08;
+        margin-top:4px;
+      }
+      .sidebar-brand .subtitle {
+        color:#607083;
+        font-size:11.2px;
+        line-height:1.42;
+        margin-top:7px;
+      }
+      .sidebar-brand .rule {
+        width:34px;
+        height:2px;
+        border-radius:999px;
+        background:#7fa9cc;
+        margin-top:10px;
+      }
       .sidebar-section-label {
         color:#526274; font-size:10px; font-weight:800; letter-spacing:0.12em;
         text-transform:uppercase; margin:14px 2px 7px;
@@ -1523,21 +1551,13 @@ render_header()
 
 
 def render_sidebar() -> str:
-    logo_html = (
-        f'<img src="data:image/png;base64,{JCU_LOGO_B64}" alt="JCU">'
-        if JCU_LOGO_B64 else '<span style="color:#0B4F8A;font-weight:900;">JCU</span>'
-    )
     st.sidebar.markdown(
-        f"""
+        """
         <div class="sidebar-brand">
-          <div class="sidebar-brand-top">
-            <div class="sidebar-logo">{logo_html}</div>
-            <div>
-              <div class="course">EG1011 · Statics and Dynamics</div>
-              <div class="title">TrussLab</div>
-            </div>
-          </div>
-          <div class="subtitle">Guided plane-truss practical, analysis and report preparation</div>
+          <div class="course">EG1011 · Statics and Dynamics</div>
+          <div class="title">TrussLab</div>
+          <div class="subtitle">Plane-truss practical, guided analysis and report preparation</div>
+          <div class="rule"></div>
         </div>
         """,
         unsafe_allow_html=True,
