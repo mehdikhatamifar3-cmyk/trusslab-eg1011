@@ -29,7 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "20"
+APP_VERSION = "2.1"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -579,7 +579,7 @@ st.markdown(
 )
 
 
-# Final interface refinements for TrussLab v20.
+# Final interface refinements for TrussLab v2.1.
 st.markdown(
     """
     <style>
@@ -728,6 +728,111 @@ st.markdown(
         .welcome-list { grid-template-columns:1fr; }
         .welcome-time { grid-column:auto; }
         .header-logo img { max-width:190px !important; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# Focused polish pass: stronger welcome panel, smaller logo, clearer active step and refined footer.
+st.markdown(
+    """
+    <style>
+      /* Keep the product name visually dominant over the institutional mark. */
+      .app-header {
+        grid-template-columns:185px minmax(0,1fr) 220px;
+        gap:22px;
+      }
+      .header-logo {
+        min-height:60px;
+        padding:1px 18px 1px 0;
+      }
+      .header-logo img {
+        width:auto !important;
+        max-width:145px !important;
+        max-height:58px;
+        object-fit:contain;
+      }
+
+      /* Lift the welcome panel from the page without creating a heavy card. */
+      .welcome-dashboard {
+        position:relative;
+        overflow:hidden;
+        background:linear-gradient(135deg,#FFFFFF 0%,#F7FBFF 100%);
+        border:1px solid #D9E8F5;
+        box-shadow:0 8px 24px rgba(0,59,113,.075);
+        padding:18px 20px;
+      }
+      .welcome-dashboard::before {
+        content:"";
+        position:absolute;
+        top:0;
+        left:0;
+        right:0;
+        height:3px;
+        background:linear-gradient(90deg,#003B71 0%,#2F80ED 100%);
+      }
+      .welcome-dashboard .eyebrow {
+        color:#003B71;
+        font-size:11px;
+      }
+      .welcome-dashboard .title {
+        font-size:21px;
+      }
+      .welcome-dashboard .text {
+        max-width:610px;
+      }
+      .welcome-list {
+        border-left:1px solid #E2EBF3;
+        padding-left:18px;
+      }
+
+      /* Make the current workflow stage unmistakable. */
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#DCECF9;
+        border-left:5px solid #003B71;
+        border-radius:8px;
+        box-shadow:0 3px 10px rgba(0,59,113,.10);
+        padding-left:0.54rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color:#003B71;
+        font-size:13px;
+        font-weight:850;
+      }
+
+      /* Quiet, structured footer. */
+      .sidebar-footer {
+        margin-top:14px;
+        padding:11px 1px 2px;
+        border-top:1px solid #DCE5ED;
+        color:#7A8796;
+        font-size:10.5px;
+        line-height:1.48;
+      }
+      .sidebar-footer .footer-help {
+        color:#64748B;
+        margin-bottom:10px;
+      }
+      .sidebar-footer .footer-version {
+        color:#34495E;
+        font-weight:800;
+        margin-bottom:2px;
+      }
+
+      @media (max-width:980px) {
+        .app-header { grid-template-columns:1fr; }
+        .header-logo {
+          min-height:auto;
+          padding:0 0 12px;
+        }
+        .header-logo img { max-width:155px !important; }
+        .welcome-list {
+          border-left:0;
+          border-top:1px solid #E2EBF3;
+          padding:12px 0 0;
+        }
       }
     </style>
     """,
@@ -1406,7 +1511,7 @@ def section_start() -> None:
           <div>
             <div class="eyebrow">Welcome to TrussLab</div>
             <div class="title">A guided practical from setup to submission</div>
-            <div class="text">Follow the workflow in the sidebar. Your entries are saved during the active session and inserted into a consistent Word report template.</div>
+            <div class="text">Follow the workflow and complete each section. Entries are saved automatically.</div>
           </div>
           <div class="welcome-list">
             <div class="welcome-item"><span class="check">✓</span><span>Analyse a pin-jointed truss</span></div>
@@ -2318,7 +2423,14 @@ def render_sidebar() -> str:
     )
 
     st.sidebar.markdown(
-        f'<div class="sidebar-footer">Use the ❓ Help control on any page for guidance.<br><br>TrussLab v{APP_VERSION}</div>',
+        f'''
+        <div class="sidebar-footer">
+          <div class="footer-help">Use the ❓ Help control on any page for guidance.</div>
+          <div class="footer-version">TrussLab v{APP_VERSION}</div>
+          <div>James Cook University</div>
+          <div>Mechanical Engineering</div>
+        </div>
+        ''',
         unsafe_allow_html=True,
     )
     return selected_page
