@@ -29,7 +29,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "14"
+APP_VERSION = "16"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -280,7 +280,59 @@ st.markdown(
       .card { border:1px solid #dfe4ea; border-radius:10px; padding:14px 16px; margin-bottom:14px; background:#fff; }
       .small-note { color:#64748b; font-size:13px; line-height:1.45; }
       div[data-testid="stMetric"] { background:#ffffff; border:1px solid #e2e8f0; padding:10px 12px; border-radius:10px; }
+      .start-hero {
+        display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
+        padding:18px 20px; margin:0 0 18px; border:1px solid #d7e2ec; border-radius:14px;
+        background:linear-gradient(135deg,#f8fbfe 0%,#ffffff 58%,#f4f8fc 100%);
+        box-shadow:0 3px 12px rgba(15,23,42,0.035);
+      }
+      .start-hero .eyebrow { color:#0B4F8A; font-size:10px; font-weight:800; letter-spacing:0.13em; text-transform:uppercase; margin-bottom:5px; }
+      .start-hero .headline { color:#172033; font-size:22px; line-height:1.15; font-weight:800; }
+      .start-hero .description { color:#536273; font-size:13px; line-height:1.5; max-width:720px; margin-top:7px; }
+      .start-steps { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; min-width:330px; }
+      .start-step-chip {
+        display:flex; align-items:center; gap:7px; padding:7px 10px; border-radius:999px;
+        background:#ffffff; border:1px solid #d8e3ed; color:#425466; font-size:11px; font-weight:700; white-space:nowrap;
+      }
+      .start-step-chip .num {
+        display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; border-radius:50%;
+        background:#e8f2ff; color:#0B4F8A; font-size:10px; font-weight:800;
+      }
+      .panel-heading { margin:0 0 3px; color:#172033; font-size:18px; font-weight:800; }
+      .panel-subheading { margin:0 0 12px; color:#64748b; font-size:12px; line-height:1.45; }
+      .start-id-note {
+        background:#fffaf0; border:1px solid #f2d8a4; border-left:4px solid #c98b21; border-radius:9px;
+        color:#71440a; font-size:11.5px; line-height:1.45; padding:9px 11px; margin:4px 0 11px;
+      }
+      .mode-summary {
+        border-radius:10px; padding:10px 12px; margin:8px 0 2px; font-size:12px; line-height:1.45;
+        background:#f4f8fc; border:1px solid #d7e3ee; color:#40566b;
+      }
+      .submission-summary {
+        margin-top:12px; padding:11px 12px; border-radius:10px; background:#f8fafc; border:1px solid #e1e7ee;
+        color:#526274; font-size:11.5px; line-height:1.5;
+      }
+      .submission-summary b { color:#1f3347; }
+      .apparatus-topline { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:2px; }
+      .apparatus-title { color:#172033; font-size:18px; font-weight:800; line-height:1.2; }
+      .apparatus-caption { color:#64748b; font-size:12px; line-height:1.45; margin-top:4px; }
+      .apparatus-badges { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+      .apparatus-badge {
+        padding:5px 8px; border-radius:999px; background:#f3f7fb; border:1px solid #d8e3ed;
+        color:#425466; font-size:10.5px; font-weight:700; white-space:nowrap;
+      }
+      .apparatus-legend {
+        display:flex; flex-wrap:wrap; justify-content:center; gap:9px; margin:-2px 0 8px;
+        color:#64748b; font-size:10.5px;
+      }
+      .legend-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+      .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+      .detail-box { background:#f8fafc; border:1px solid #e1e7ee; border-radius:9px; padding:10px 11px; color:#526274; font-size:11px; line-height:1.5; }
+      .detail-box b { color:#1f3347; }
       @media (max-width:980px) {
+        .start-hero { flex-direction:column; }
+        .start-steps { justify-content:flex-start; min-width:0; }
+        .detail-grid { grid-template-columns:1fr; }
         .app-header { grid-template-columns:1fr; text-align:center; }
         .app-header-author { text-align:center; }
         .brand-box { max-width:280px; margin:auto; }
@@ -860,40 +912,44 @@ def closest_member_to_theory(comparison: pd.DataFrame) -> str:
 
 def render_apparatus_overview() -> None:
     st.markdown(
-        '<div class="info"><b>Apparatus overview:</b> a simply supported plane truss is loaded vertically at joint B. Five members (AF, FE, AE, AB and EB) contain proving rings / dial gauges so their axial response can be measured directly.</div>',
+        """
+        <div class="apparatus-topline">
+          <div>
+            <div class="apparatus-title">Plane-truss apparatus</div>
+            <div class="apparatus-caption">A central load is applied at joint B while five proving-ring members provide signed dial readings.</div>
+          </div>
+          <div class="apparatus-badges">
+            <span class="apparatus-badge">Pin at A</span>
+            <span class="apparatus-badge">Roller at C</span>
+            <span class="apparatus-badge">5 gauges</span>
+          </div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    st.pyplot(plot_apparatus(30, False, "Plane-truss apparatus and instrumented members"), width="stretch")
-    c1, c2 = st.columns(2)
-    with c1:
+    st.pyplot(plot_apparatus(30, False, None), width="stretch")
+    st.markdown(
+        """
+        <div class="apparatus-legend">
+          <span><span class="legend-dot" style="background:#0B4F8A;"></span>Instrumented member</span>
+          <span><span class="legend-dot" style="background:#C62828;"></span>Applied load</span>
+          <span><span class="legend-dot" style="background:#334155;"></span>Truss member</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.expander("Apparatus details and practical workflow"):
         st.markdown(
             """
-            <div class="card">
-            <h4 style="margin-top:0;color:#0B4F8A;">What the apparatus contains</h4>
-            <ul style="margin-bottom:0; line-height:1.55;">
-              <li><b>Pin support at A</b> and <b>roller support at C</b>.</li>
-              <li><b>Load hanger at joint B</b> for 10 kg, 20 kg and 30 kg test loads.</li>
-              <li><b>Five instrumented members</b>: AF, FE, AE, AB and EB.</li>
-              <li>Signed dial readings in <b>millimetres (mm)</b>.</li>
-              <li>The dial direction is interpreted as <b>tension</b> or <b>compression</b> using the apparatus convention shown in the laboratory.</li>
-            </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c2:
-        st.markdown(
-            """
-            <div class="card">
-            <h4 style="margin-top:0;color:#0B4F8A;">What students do</h4>
-            <ol style="margin-bottom:0; line-height:1.55;">
-              <li>Enter your details and choose <b>Physical laboratory</b> or <b>Online simulated practical</b>.</li>
-              <li>Complete the short pre-lab and prediction sections.</li>
-              <li>Record or generate readings for <b>10 kg, 20 kg and 30 kg</b>.</li>
-              <li>Enter selected theoretical values for the <b>30 kg</b> case.</li>
-              <li>Compare theoretical and measured behaviour.</li>
-              <li>Generate the Word report template, complete the shaded writing spaces, and submit the final DOCX to <b>LearnJCU</b>.</li>
-            </ol>
+            <div class="detail-grid">
+              <div class="detail-box">
+                <b>Apparatus</b><br>
+                The truss is simply supported by a pin at A and a roller at C. Loads of 10 kg, 20 kg and 30 kg are applied at joint B. Members AF, FE, AE, AB and EB contain proving rings / dial gauges.
+              </div>
+              <div class="detail-box">
+                <b>Student workflow</b><br>
+                Complete the pre-lab and predictions, collect physical or simulated readings, perform the selected calculations, analyse the results, then generate and complete the Word report for LearnJCU submission.
+              </div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -901,44 +957,58 @@ def render_apparatus_overview() -> None:
 
 
 def section_start() -> None:
-    st.subheader("1. Start: student details and practical mode")
     st.markdown(
-        '<div class="info"><b>Two equivalent pathways:</b> choose the physical laboratory when the apparatus is available, or the online simulated practical when an in-person session cannot run. Both pathways produce the same structured Word report template. Students complete the remaining writing spaces in Word and submit the finished DOCX through LearnJCU.</div>',
+        """
+        <div class="start-hero">
+          <div>
+            <div class="eyebrow">Getting started</div>
+            <div class="headline">Set up your practical session</div>
+            <div class="description">Enter your official details, select the appropriate pathway, then work through the practical sections in order. Both pathways produce the same structured report template.</div>
+          </div>
+          <div class="start-steps">
+            <div class="start-step-chip"><span class="num">1</span> Enter details</div>
+            <div class="start-step-chip"><span class="num">2</span> Choose pathway</div>
+            <div class="start-step-chip"><span class="num">3</span> Follow workflow</div>
+          </div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    st.markdown(
-        '<div class="warning"><b>Important - use your official JCU student ID:</b> Enter the eight-digit student number shown in your JCU account. Do not enter your email address, name, initials or a made-up number. A valid JCU student ID is required for the practical report and the online practical pathway.</div>',
-        unsafe_allow_html=True,
-    )
-    left, right = st.columns([0.95, 1.05])
+
+    left, right = st.columns([0.88, 1.12], gap="large")
     with left:
-        st.text_input("Student full name *", key="student_name")
-        st.text_input("JCU student ID (8 digits) *", key="student_id", max_chars=8, placeholder="Example: 12345678")
-        if st.session_state.student_id and not valid_jcu_student_id(st.session_state.student_id):
-            st.error("Enter your official eight-digit JCU student ID using numbers only.")
-        elif valid_jcu_student_id(st.session_state.student_id):
-            st.success("JCU student ID format accepted.")
-        st.text_input("Practical/tutorial group *", key="group", placeholder="Example: Tuesday 2 pm")
-        mode = st.selectbox("Practical mode *", MODE_OPTIONS, key="practical_mode")
-        if mode != st.session_state.previous_mode:
-            clear_mode_dependent_work()
-            reset_safety_acknowledgement()
-            st.session_state.previous_mode = mode
-            st.info("The apparatus data were cleared because the practical mode changed.")
+        with st.container(border=True):
+            st.markdown('<div class="panel-heading">Student and session details</div><div class="panel-subheading">Use the details associated with your JCU enrolment and scheduled practical group.</div>', unsafe_allow_html=True)
+            st.text_input("Student full name *", key="student_name")
+            st.markdown('<div class="start-id-note"><b>Use your official JCU student ID.</b> Enter the eight-digit student number shown in your JCU account—not your email address, initials or a made-up number.</div>', unsafe_allow_html=True)
+            st.text_input("JCU student ID (8 digits) *", key="student_id", max_chars=8, placeholder="Example: 12345678")
+            if st.session_state.student_id and not valid_jcu_student_id(st.session_state.student_id):
+                st.error("Enter your official eight-digit JCU student ID using numbers only.")
+            elif valid_jcu_student_id(st.session_state.student_id):
+                st.success("JCU student ID format accepted.")
+            st.text_input("Practical/tutorial group *", key="group", placeholder="Example: Tuesday 2 pm")
+            mode = st.selectbox("Practical pathway *", MODE_OPTIONS, key="practical_mode")
+            if mode != st.session_state.previous_mode:
+                clear_mode_dependent_work()
+                reset_safety_acknowledgement()
+                st.session_state.previous_mode = mode
+                st.info("The apparatus data were cleared because the practical pathway changed.")
 
-        if mode == PHYSICAL_MODE:
-            st.markdown('<div class="hint"><b>Physical laboratory:</b> use the real truss apparatus, observe the proving-ring / dial-gauge responses and enter the signed readings directly into the table in Section 5.</div>', unsafe_allow_html=True)
-        elif mode == ONLINE_MODE:
-            st.markdown('<div class="hint"><b>Online simulated practical:</b> the app generates a controlled, reproducible dataset using your official JCU student ID.</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="warning">Select a practical mode before entering apparatus data.</div>', unsafe_allow_html=True)
+            if mode == PHYSICAL_MODE:
+                st.markdown('<div class="mode-summary"><b>Physical laboratory:</b> attend the scheduled session, complete the safety induction, use the apparatus and enter the signed readings in Section 5.</div>', unsafe_allow_html=True)
+            elif mode == ONLINE_MODE:
+                st.markdown('<div class="mode-summary"><b>Online simulated practical:</b> the app creates a controlled, reproducible dataset from your official JCU student ID.</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="mode-summary"><b>Choose a pathway</b> before continuing to apparatus data collection.</div>', unsafe_allow_html=True)
 
-        st.markdown("### What students submit")
-        st.markdown(
-            "TrussLab generates a uniform eight-page Word report template containing the student data, numerical results, tables and figures. Students complete every shaded writing space in their own words, keep the prescribed formatting and page length, and submit the finished DOCX through LearnJCU."
-        )
+            st.markdown(
+                '<div class="submission-summary"><b>Final submission:</b> TrussLab generates a uniform eight-page Word template containing your data, numerical results, tables and figures. Complete the shaded writing spaces in your own words and submit the finished DOCX through LearnJCU.</div>',
+                unsafe_allow_html=True,
+            )
+
     with right:
-        render_apparatus_overview()
+        with st.container(border=True):
+            render_apparatus_overview()
 
 
 def section_prepare() -> None:
