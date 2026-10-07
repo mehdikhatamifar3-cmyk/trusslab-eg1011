@@ -31,7 +31,7 @@ st.set_page_config(
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 G = 9.81
-APP_VERSION = "2.5"
+APP_VERSION = "2.6"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -1253,6 +1253,178 @@ st.markdown(
 )
 
 
+
+# Cross-device readability and accessibility override (TrussLab v2.6).
+# Keep this as the final CSS block so it wins over Streamlit/browser theme rules.
+st.markdown(
+    """
+    <style>
+      :root {
+        color-scheme: light !important;
+        --trusslab-ink: #172033;
+        --trusslab-muted: #475569;
+        --trusslab-surface: #FFFFFF;
+        --trusslab-input: #FFFFFF;
+      }
+
+      html, body, [data-testid="stAppViewContainer"], .stApp {
+        background-color: var(--trusslab-surface) !important;
+        color: var(--trusslab-ink) !important;
+      }
+
+      /* Native Streamlit text and widget labels. */
+      [data-testid="stAppViewContainer"] .stMarkdown,
+      [data-testid="stAppViewContainer"] .stMarkdown p,
+      [data-testid="stAppViewContainer"] .stMarkdown li,
+      [data-testid="stAppViewContainer"] .stWidgetLabel,
+      [data-testid="stAppViewContainer"] .stWidgetLabel p,
+      [data-testid="stAppViewContainer"] [data-testid="stRadio"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stRadio"] label p,
+      [data-testid="stAppViewContainer"] [data-testid="stCheckbox"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stCheckbox"] label p,
+      [data-testid="stAppViewContainer"] [data-testid="stSelectbox"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stNumberInput"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stTextInput"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stTextArea"] label {
+        color: var(--trusslab-ink) !important;
+        -webkit-text-fill-color: var(--trusslab-ink) !important;
+        opacity: 1 !important;
+      }
+
+      /* Inputs and dropdowns stay light with dark, readable values. */
+      [data-baseweb="input"] > div,
+      [data-baseweb="textarea"] > div,
+      [data-baseweb="select"] > div {
+        background-color: var(--trusslab-input) !important;
+        color: var(--trusslab-ink) !important;
+      }
+      [data-baseweb="input"] input,
+      [data-baseweb="textarea"] textarea,
+      [data-baseweb="select"] input,
+      [data-baseweb="select"] span,
+      [role="listbox"],
+      [role="listbox"] * {
+        color: var(--trusslab-ink) !important;
+        -webkit-text-fill-color: var(--trusslab-ink) !important;
+        opacity: 1 !important;
+      }
+      [role="listbox"] {
+        background-color: #FFFFFF !important;
+      }
+      input::placeholder, textarea::placeholder {
+        color: #64748B !important;
+        -webkit-text-fill-color: #64748B !important;
+        opacity: 1 !important;
+      }
+
+      /* Radio and checkbox controls must remain visible on white surfaces. */
+      [data-testid="stRadio"] [role="radiogroup"] {
+        color: var(--trusslab-ink) !important;
+      }
+      [data-testid="stRadio"] label > div:first-child,
+      [data-testid="stCheckbox"] label > span:first-child {
+        opacity: 1 !important;
+      }
+
+      /* Containers used by the practical questions and panels. */
+      div[data-testid="stVerticalBlockBorderWrapper"],
+      details[data-testid="stExpander"],
+      div[data-testid="stMetric"],
+      .soft-panel,
+      .section-dashboard,
+      .welcome-dashboard,
+      .card,
+      .detail-box {
+        background-color: #FFFFFF !important;
+        color: var(--trusslab-ink) !important;
+      }
+
+      /* Preserve intentional semantic colours while preventing washed-out text. */
+      .content-heading .text,
+      .page-heading .section-summary,
+      .section-dashboard .description,
+      .section-next-action,
+      .panel-subheading,
+      .apparatus-caption,
+      .small-note,
+      [data-testid="stCaptionContainer"],
+      [data-testid="stCaptionContainer"] p {
+        color: var(--trusslab-muted) !important;
+        -webkit-text-fill-color: var(--trusslab-muted) !important;
+        opacity: 1 !important;
+      }
+      .status-strip.info, .status-strip.info * {
+        color: #234E75 !important;
+        -webkit-text-fill-color: #234E75 !important;
+      }
+      .status-strip.success, .status-strip.success * {
+        color: #17663A !important;
+        -webkit-text-fill-color: #17663A !important;
+      }
+      .status-strip.warning, .status-strip.warning * {
+        color: #71440A !important;
+        -webkit-text-fill-color: #71440A !important;
+      }
+
+      /* Sidebar remains a fixed light interface in every OS/browser mode. */
+      [data-testid="stSidebar"],
+      [data-testid="stSidebar"] > div:first-child {
+        background-color: #FFFFFF !important;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        color: #526274 !important;
+        -webkit-text-fill-color: #526274 !important;
+        opacity: 1 !important;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color: #003B71 !important;
+        -webkit-text-fill-color: #003B71 !important;
+        font-weight: 800 !important;
+      }
+
+      /* Buttons: keep primary buttons white-on-blue and secondary dark-on-white. */
+      .stButton > button[kind="primary"],
+      .stDownloadButton > button[kind="primary"] {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+      }
+      .stButton > button[kind="primary"] *,
+      .stDownloadButton > button[kind="primary"] * {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+      }
+      .stButton > button[kind="secondary"],
+      .stButton > button[kind="secondary"] * {
+        color: #31465A !important;
+        -webkit-text-fill-color: #31465A !important;
+      }
+
+      /* Tables and metrics. */
+      [data-testid="stMetricLabel"],
+      [data-testid="stMetricLabel"] *,
+      [data-testid="stMetricValue"],
+      [data-testid="stMetricValue"] * {
+        color: var(--trusslab-ink) !important;
+        -webkit-text-fill-color: var(--trusslab-ink) !important;
+      }
+      [data-testid="stDataFrame"],
+      [data-testid="stDataEditor"] {
+        color: var(--trusslab-ink) !important;
+        background-color: #FFFFFF !important;
+      }
+
+      /* Support Windows forced-colour/high-contrast mode rather than hiding controls. */
+      @media (forced-colors: active) {
+        [data-testid="stRadio"] label,
+        [data-testid="stCheckbox"] label,
+        input, textarea, button {
+          forced-color-adjust: auto;
+        }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 def render_header() -> None:
     logo_html = (
