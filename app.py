@@ -30,8 +30,10 @@ st.set_page_config(
 
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
+SAVE_DIR = APP_DIR / "student_saves"
+SAVE_DIR.mkdir(parents=True, exist_ok=True)
 G = 9.81
-APP_VERSION = "2.6"
+APP_VERSION = "2.7"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -1602,6 +1604,10 @@ def initialise_state() -> None:
         "safe_mass_answer": None,
         "critical_member_answer": "",
         "critical_type_answer": "",
+        "loaded_student_id": "",
+        "progress_restored_notice": False,
+        "autosave_status": "Enter a valid JCU ID to enable autosave",
+        "autosave_error": "",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -1858,6 +1864,136 @@ def normalise_jcu_student_id(student_id: str) -> str:
 
 def valid_jcu_student_id(student_id: str) -> bool:
     return bool(JCU_ID_PATTERN.fullmatch(normalise_jcu_student_id(student_id)))
+
+
+# -----------------------------------------------------------------------------
+# Persistent student progress
+# -----------------------------------------------------------------------------
+# Progress is stored as one JSON file per valid JCU student ID. Report bytes and
+# Streamlit-owned widget internals are intentionally excluded and rebuilt when
+# needed. Writes are atomic so an interrupted save does not corrupt progress.
+_AUTOSAVE_EXCLUDED_KEYS = {
+    PHYSICAL_EDITOR_KEY,
+    "physical_lab_editor",
+    "clear_apparatus_data_button",
+    "report_bytes",
+    "report_filename",
+    "loaded_student_id",
+    "progress_restored_notice",
+    "autosave_status",
+    "autosave_error",
+}
+
+
+def get_save_file(student_id: str) -> Path | None:
+    normalised = normalise_jcu_student_id(student_id)
+    if not valid_jcu_student_id(normalised):
+        return None
+    return SAVE_DIR / f"{normalised}.json"
+
+
+def _json_safe_value(value):
+    """Convert supported session values to JSON-safe values."""
+    if isinstance(value, pd.DataFrame):
+        clean = value.astype(object).where(pd.notna(value), None)
+        return {
+            "__type__": "dataframe",
+            "columns": list(clean.columns),
+            "records": clean.to_dict(orient="records"),
+        }
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, (str, int, float, bool, list, dict)) or value is None:
+        return value
+    return None
+
+
+def save_student_progress() -> bool:
+    """Persist the current student's serialisable progress using an atomic write."""
+    student_id = normalise_jcu_student_id(st.session_state.get("student_id", ""))
+    save_file = get_save_file(student_id)
+    if save_file is None:
+        st.session_state.autosave_status = "Enter a valid JCU ID to enable autosave"
+        return False
+
+    payload = {
+        "schema_version": 1,
+        "app_version": APP_VERSION,
+        "student_id": student_id,
+        "saved_at": datetime.now().isoformat(timespec="seconds"),
+        "state": {},
+    }
+    for key, value in st.session_state.items():
+        if key in _AUTOSAVE_EXCLUDED_KEYS:
+            continue
+        converted = _json_safe_value(value)
+        if converted is not None or value is None:
+            payload["state"][key] = converted
+
+    temporary_file = save_file.with_suffix(".json.tmp")
+    try:
+        temporary_file.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False),
+            encoding="utf-8",
+        )
+        temporary_file.replace(save_file)
+        st.session_state.autosave_status = "Progress automatically saved"
+        st.session_state.autosave_error = ""
+        return True
+    except Exception as exc:
+        st.session_state.autosave_status = "Autosave temporarily unavailable"
+        st.session_state.autosave_error = str(exc)
+        try:
+            temporary_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return False
+
+
+def load_student_progress(student_id: str) -> bool:
+    """Restore saved progress for a valid JCU student ID."""
+    normalised = normalise_jcu_student_id(student_id)
+    save_file = get_save_file(normalised)
+    if save_file is None or not save_file.exists():
+        st.session_state.loaded_student_id = normalised
+        st.session_state.autosave_status = "Autosave active - no earlier progress found"
+        return False
+
+    try:
+        payload = json.loads(save_file.read_text(encoding="utf-8"))
+        if payload.get("student_id") != normalised:
+            raise ValueError("Saved progress does not match this student ID.")
+        restored_state = payload.get("state", {})
+        for key, value in restored_state.items():
+            if key in _AUTOSAVE_EXCLUDED_KEYS or key == "student_id":
+                continue
+            if isinstance(value, dict) and value.get("__type__") == "dataframe":
+                frame = pd.DataFrame(value.get("records", []), columns=value.get("columns", []))
+                st.session_state[key] = frame
+            else:
+                st.session_state[key] = value
+        st.session_state.student_id = normalised
+        st.session_state.loaded_student_id = normalised
+        st.session_state.progress_restored_notice = True
+        st.session_state.autosave_status = "Saved progress restored"
+        st.session_state.autosave_error = ""
+        return True
+    except Exception as exc:
+        st.session_state.loaded_student_id = normalised
+        st.session_state.autosave_status = "Saved progress could not be restored"
+        st.session_state.autosave_error = str(exc)
+        return False
+
+
+def restore_progress_for_entered_id() -> None:
+    """Text-input callback that restores progress before later widgets render."""
+    student_id = normalise_jcu_student_id(st.session_state.get("student_id", ""))
+    if not valid_jcu_student_id(student_id):
+        st.session_state.loaded_student_id = ""
+        st.session_state.autosave_status = "Enter a valid JCU ID to enable autosave"
+        return
+    if st.session_state.get("loaded_student_id", "") != student_id:
+        load_student_progress(student_id)
 
 
 def _online_dataset_index(student_id: str) -> int:
@@ -2169,7 +2305,13 @@ def section_start() -> None:
             max_chars=8,
             placeholder="Example: 12345678",
             help="Use the official eight-digit student number shown in your JCU account.",
+            on_change=restore_progress_for_entered_id,
         )
+        if st.session_state.get("progress_restored_notice", False):
+            st.success("Your previously saved TrussLab progress has been restored.")
+            st.session_state.progress_restored_notice = False
+        if st.session_state.get("autosave_error"):
+            st.warning("Autosave is temporarily unavailable. Keep this page open and download the report as soon as it is generated.")
         if st.session_state.student_id and not valid_jcu_student_id(st.session_state.student_id):
             st.error("Enter your official eight-digit JCU student ID using numbers only.")
         elif valid_jcu_student_id(st.session_state.student_id):
@@ -2602,7 +2744,7 @@ def section_data() -> None:
 
         render_content_heading(
             "Signed dial readings",
-            "Complete all 15 cells. The table saves entries automatically during the active session.",
+            "Complete all 15 cells. The table and other entries are automatically saved using your JCU student ID.",
         )
         edited = st.data_editor(
             st.session_state.lab_data,
@@ -3166,7 +3308,7 @@ def section_report() -> None:
             "Complete every shaded writing space without changing the prescribed layout, review the final document and submit it through LearnJCU.",
         ],
         "The report downloads successfully and all shaded sections are completed in Word before submission.",
-        "The app does not upload your answers to a class database; download the report before closing the session.",
+        "Progress is saved locally by JCU student ID. Download the report when it is generated and keep your own copy.",
     )
     render_section_dashboard(
         "Finish and submit",
@@ -3258,6 +3400,7 @@ def section_report() -> None:
                     report, filename = create_report_bytes()
                     st.session_state.report_bytes = report
                     st.session_state.report_filename = filename
+                    save_student_progress()
                     st.success("The Word report template was generated successfully.")
                 except Exception as exc:
                     st.session_state.report_bytes = None
@@ -3275,7 +3418,7 @@ def section_report() -> None:
             st.caption("Complete the shaded response boxes in Word, review the full document and submit the final DOCX through LearnJCU.")
 
     st.markdown(
-        '<div class="report-note"><b>Privacy:</b> the app does not upload student answers to a class database. Entries remain in the active Streamlit session, so download the generated report before closing the session.</div>',
+        '<div class="report-note"><b>Progress and privacy:</b> entries are automatically saved on the app server using the JCU student ID so work can be restored after a timeout. Download the generated report and keep your own copy.</div>',
         unsafe_allow_html=True,
     )
 
@@ -3403,6 +3546,16 @@ def render_sidebar() -> str:
             unsafe_allow_html=True,
         )
 
+    if valid_jcu_student_id(st.session_state.get("student_id", "")):
+        st.sidebar.markdown(
+            '<div class="sidebar-status-inline good"><span class="dot"></span><span>Progress automatically saved</span></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.sidebar.markdown(
+            '<div class="sidebar-status-inline warn"><span class="dot"></span><span>Enter a valid JCU ID to enable autosave</span></div>',
+            unsafe_allow_html=True,
+        )
     st.sidebar.markdown(
         """
         <div class="sidebar-summary-card">
@@ -3451,3 +3604,6 @@ elif page == "8. Engineering challenge":
     section_part_b()
 else:
     section_report()
+
+# Persist the latest serialisable values after every Streamlit rerun.
+save_student_progress()
