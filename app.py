@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Clean deployment release: TrussLab v2.5
+# TrussLab v2.8: stable physical-data editing and reliable progress saves.
 
 import base64
 import hashlib
@@ -8,6 +8,7 @@ import io
 import json
 import math
 import re
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -33,7 +34,7 @@ ASSET_DIR = APP_DIR / "assets"
 SAVE_DIR = APP_DIR / "student_saves"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 G = 9.81
-APP_VERSION = "2.7"
+APP_VERSION = "2.8"
 
 PHYSICAL_MODE = "Physical laboratory"
 ONLINE_MODE = "Online simulated practical"
@@ -74,7 +75,9 @@ ONLINE_DATASETS: Tuple[Dict[int, Dict[str, float]], ...] = (
 
 # This key is owned by Streamlit's data_editor widget. It must not be
 # reassigned by the general state-persistence workaround.
-PHYSICAL_EDITOR_KEY = "physical_lab_editor_v7"
+PHYSICAL_EDITOR_KEY = "physical_lab_editor_v8"
+PHYSICAL_EDITOR_BASE_KEY = "_physical_lab_editor_base_v8"
+LAB_READING_COLUMNS = ("10 kg (mm)", "20 kg (mm)", "30 kg (mm)")
 
 ALL_MEMBERS = ["AF", "FE", "ED", "DC", "AB", "BC", "AE", "EC", "EB"]
 INSTRUMENTED = ["AF", "FE", "AE", "AB", "EB"]
@@ -1543,6 +1546,46 @@ def blank_lab_dataframe() -> pd.DataFrame:
     )
 
 
+def normalise_lab_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Keep a fixed member order and float columns, including after JSON restore."""
+    frame = dataframe.copy(deep=True)
+    frame = frame.set_index("Member").reindex(INSTRUMENTED)
+    for column in LAB_READING_COLUMNS:
+        values = pd.to_numeric(frame[column], errors="coerce").astype(float)
+        frame[column] = values.where(np.isfinite(values), np.nan)
+    return frame.loc[:, list(LAB_READING_COLUMNS)].reset_index()
+
+
+def apply_physical_editor_edits(baseline: pd.DataFrame, editor_state: dict) -> pd.DataFrame:
+    """Apply the widget's cumulative edits to its unchanged input snapshot."""
+    frame = normalise_lab_dataframe(baseline)
+    for row_position, changes in editor_state.get("edited_rows", {}).items():
+        try:
+            position = int(row_position)
+        except (TypeError, ValueError):
+            continue
+        if not 0 <= position < len(frame) or not isinstance(changes, dict):
+            continue
+        for column, value in changes.items():
+            if column not in LAB_READING_COLUMNS:
+                continue
+            # Clearing a cell means missing; an explicitly entered zero is valid.
+            number = pd.to_numeric(value, errors="coerce")
+            frame.at[position, column] = (
+                float(number) if pd.notna(number) and np.isfinite(number) else np.nan
+            )
+    return frame
+
+
+def reset_physical_editor() -> None:
+    """Discard only transient editor state, before that widget is rendered."""
+    for key in (
+        PHYSICAL_EDITOR_KEY, PHYSICAL_EDITOR_BASE_KEY,
+        "physical_lab_editor_v7", "physical_lab_editor",
+    ):
+        st.session_state.pop(key, None)
+
+
 def initialise_state() -> None:
     defaults = {
         "student_name": "",
@@ -1685,6 +1728,7 @@ def require_safety_before_main_practical() -> bool:
 # their internal session-state value and must be excluded from this operation.
 _WIDGET_MANAGED_KEYS = {
     PHYSICAL_EDITOR_KEY,
+    "physical_lab_editor_v7",
     "physical_lab_editor",
     "clear_apparatus_data_button",  # legacy key from v10; never preserve/reassign
 }
@@ -1712,8 +1756,7 @@ def clear_mode_dependent_work() -> None:
     st.session_state.simulation_student_id = ""
     # Remove widget-owned editor state so the next physical table is rebuilt
     # cleanly from lab_data. The legacy key is removed for users upgrading from v6.
-    st.session_state.pop(PHYSICAL_EDITOR_KEY, None)
-    st.session_state.pop("physical_lab_editor", None)
+    reset_physical_editor()
     reset_report_cache()
 
 
@@ -1729,12 +1772,6 @@ def apply_pending_apparatus_clear() -> None:
         st.session_state.clear_apparatus_requested = False
         clear_mode_dependent_work()
         st.session_state.apparatus_clear_notice = True
-
-
-# These must run before render_header() and before the selected section creates
-# any widgets. This prevents StreamlitValueAssignmentNotAllowedError.
-apply_pending_apparatus_clear()
-preserve_cross_section_state()
 
 
 def theoretical_forces(mass_kg: float) -> Dict[str, float]:
@@ -1874,6 +1911,8 @@ def valid_jcu_student_id(student_id: str) -> bool:
 # needed. Writes are atomic so an interrupted save does not corrupt progress.
 _AUTOSAVE_EXCLUDED_KEYS = {
     PHYSICAL_EDITOR_KEY,
+    PHYSICAL_EDITOR_BASE_KEY,
+    "physical_lab_editor_v7",
     "physical_lab_editor",
     "clear_apparatus_data_button",
     "report_bytes",
@@ -1930,12 +1969,15 @@ def save_student_progress() -> bool:
         if converted is not None or value is None:
             payload["state"][key] = converted
 
-    temporary_file = save_file.with_suffix(".json.tmp")
+    temporary_file = None
     try:
-        temporary_file.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False),
-            encoding="utf-8",
-        )
+        # Separate temporary files also avoid collisions between two open tabs.
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=SAVE_DIR,
+            prefix=f".{student_id}_", suffix=".tmp", delete=False,
+        ) as stream:
+            temporary_file = Path(stream.name)
+            json.dump(payload, stream, ensure_ascii=False, indent=2, allow_nan=False)
         temporary_file.replace(save_file)
         st.session_state.autosave_status = "Progress automatically saved"
         st.session_state.autosave_error = ""
@@ -1944,7 +1986,8 @@ def save_student_progress() -> bool:
         st.session_state.autosave_status = "Autosave temporarily unavailable"
         st.session_state.autosave_error = str(exc)
         try:
-            temporary_file.unlink(missing_ok=True)
+            if temporary_file is not None:
+                temporary_file.unlink(missing_ok=True)
         except Exception:
             pass
         return False
@@ -1969,11 +2012,13 @@ def load_student_progress(student_id: str) -> bool:
                 continue
             if isinstance(value, dict) and value.get("__type__") == "dataframe":
                 frame = pd.DataFrame(value.get("records", []), columns=value.get("columns", []))
-                st.session_state[key] = frame
+                st.session_state[key] = normalise_lab_dataframe(frame) if key == "lab_data" else frame
             else:
                 st.session_state[key] = value
         st.session_state.student_id = normalised
         st.session_state.loaded_student_id = normalised
+        reset_physical_editor()
+        reset_report_cache()
         st.session_state.progress_restored_notice = True
         st.session_state.autosave_status = "Saved progress restored"
         st.session_state.autosave_error = ""
@@ -2067,15 +2112,17 @@ def plot_lab_readings(dataframe: pd.DataFrame):
     loads = np.array([10.0, 20.0, 30.0])
     for _, row in dataframe.iterrows():
         values = np.array([row["10 kg (mm)"], row["20 kg (mm)"], row["30 kg (mm)"]], dtype=float)
-        if np.isnan(values).any():
+        if np.isnan(values).all():
             continue
+        # NaN leaves a gap. Never replace an unrecorded reading with zero.
         ax.plot(loads, values, marker="o", linewidth=2, label=row["Member"])
     ax.axhline(0, color="#94A3B8", linewidth=0.9)
     ax.set_xlabel("Applied mass (kg)")
     ax.set_ylabel("Signed dial displacement (mm)")
     ax.set_title("Dial response as the applied mass increased")
     ax.grid(True, linewidth=0.4, alpha=0.45)
-    ax.legend(ncol=5, loc="best")
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(ncol=5, loc="best")
     fig.tight_layout()
     return fig
 
@@ -2646,6 +2693,35 @@ def set_lab_value(member: str, column: str, value: float) -> None:
     df = st.session_state.lab_data.copy()
     df.loc[df["Member"] == member, column] = value
     st.session_state.lab_data = df
+    reset_report_cache()
+
+
+def sync_physical_editor_edits() -> bool:
+    """Commit edits independently of whether Data collection renders this run."""
+    baseline = st.session_state.get(PHYSICAL_EDITOR_BASE_KEY)
+    editor_state = st.session_state.get(PHYSICAL_EDITOR_KEY)
+    if not isinstance(baseline, pd.DataFrame) or not isinstance(editor_state, dict):
+        return False
+    updated = apply_physical_editor_edits(baseline, editor_state)
+    if updated.equals(st.session_state.lab_data):
+        return False
+    st.session_state.lab_data = updated
+    st.session_state.lab_complete = _lab_entries_complete()
+    reset_report_cache()
+    return True
+
+
+def physical_editor_changed() -> None:
+    """Save a committed edit before the next page or any plots are rendered."""
+    if sync_physical_editor_edits():
+        save_student_progress()
+
+
+def physical_editor_baseline() -> pd.DataFrame:
+    """Keep the editor input stable throughout one visit to Data collection."""
+    if PHYSICAL_EDITOR_BASE_KEY not in st.session_state or PHYSICAL_EDITOR_KEY not in st.session_state:
+        st.session_state[PHYSICAL_EDITOR_BASE_KEY] = normalise_lab_dataframe(st.session_state.lab_data)
+    return st.session_state[PHYSICAL_EDITOR_BASE_KEY].copy(deep=True)
 
 
 
@@ -2723,12 +2799,12 @@ def section_data() -> None:
             st.markdown(
                 '''<div class="soft-panel tint">
                   <ol class="process-list">
-                    <li>Confirm the truss is clear of the support frame and the load hanger moves freely.</li>
-                    <li>Identify the dial direction used for tension and compression.</li>
-                    <li>With no applied load, zero the five gauges.</li>
-                    <li>Apply <b>10 kg</b>, then <b>20 kg</b>, then <b>30 kg</b> at joint B.</li>
-                    <li>Enter the signed readings for AF, FE, AE, AB and EB.</li>
-                    <li>Unload the truss and record the return-to-zero observation.</li>
+                    <li><span>Confirm the truss is clear of the support frame and the load hanger moves freely.</span></li>
+                    <li><span>Identify the dial direction used for tension and compression.</span></li>
+                    <li><span>With no applied load, zero the five gauges.</span></li>
+                    <li><span>Apply <b>10 kg</b>, then <b>20 kg</b>, then <b>30 kg</b> at joint B.</span></li>
+                    <li><span>Enter the signed readings for AF, FE, AE, AB and EB.</span></li>
+                    <li><span>Unload the truss and record the return-to-zero observation.</span></li>
                   </ol>
                 </div>''',
                 unsafe_allow_html=True,
@@ -2744,10 +2820,12 @@ def section_data() -> None:
 
         render_content_heading(
             "Signed dial readings",
-            "Complete all 15 cells. The table and other entries are automatically saved using your JCU student ID.",
+            "Complete all 15 cells. Press Enter or Tab to finish each cell; committed readings are saved using your JCU student ID.",
         )
-        edited = st.data_editor(
-            st.session_state.lab_data,
+        # The baseline must not be replaced by the editor's returned dataframe.
+        # The widget stores cumulative edits relative to this stable snapshot.
+        st.data_editor(
+            physical_editor_baseline(),
             hide_index=True,
             width="stretch",
             num_rows="fixed",
@@ -2759,8 +2837,11 @@ def section_data() -> None:
                 "30 kg (mm)": st.column_config.NumberColumn("30 kg (mm)", format="%.3f", step=0.001),
             },
             key=PHYSICAL_EDITOR_KEY,
+            on_change=physical_editor_changed,
         )
-        st.session_state.lab_data = edited.copy()
+        sync_physical_editor_edits()
+        recorded = int(st.session_state.lab_data[list(LAB_READING_COLUMNS)].notna().sum().sum())
+        st.caption(f"{recorded} of 15 readings recorded. Blank cells are missing readings; 0.000 is a recorded zero.")
         st.radio(
             "After unloading, did the gauges return close to zero? *",
             ["Not checked", "Yes", "Approximately", "No"],
@@ -2838,6 +2919,15 @@ def section_data() -> None:
             hide_index=True,
             width="stretch",
         )
+
+    st.download_button(
+        "Download readings backup (.csv)",
+        data=st.session_state.lab_data.to_csv(index=False, float_format="%.3f").encode("utf-8"),
+        file_name=f"TrussLab_readings_{safe_filename(st.session_state.student_id)}.csv",
+        mime="text/csv",
+        on_click="ignore",
+        help="Keep a copy of the readings currently recorded in the app. Missing cells stay blank.",
+    )
 
     action_col, clear_col = st.columns([0.58, 0.42], gap="large")
     with action_col:
@@ -3091,6 +3181,9 @@ def section_compare() -> None:
             "Load-response pattern",
             "Check whether the measured or simulated readings change approximately in proportion to the applied load.",
         )
+        recorded = int(st.session_state.lab_data[list(LAB_READING_COLUMNS)].notna().sum().sum())
+        if recorded < 15:
+            st.warning(f"Only {recorded} of 15 readings are recorded. Return to Data collection to enter the missing values; gaps in the graph are unrecorded readings.")
         if not st.session_state.lab_data[["10 kg (mm)", "20 kg (mm)", "30 kg (mm)"]].isna().all().all():
             with st.container(border=True):
                 st.pyplot(plot_lab_readings(st.session_state.lab_data), width="stretch")
@@ -3424,10 +3517,16 @@ def section_report() -> None:
 
 
 
+# Commit any pending table event before navigation can remove its widget.
+# Clear/reset requests run first so stale edits cannot resurrect cleared data.
+apply_pending_apparatus_clear()
+if sync_physical_editor_edits():
+    save_student_progress()
+preserve_cross_section_state()
 render_header()
 
 
-def render_sidebar() -> str:
+def render_sidebar() -> Tuple[str, object]:
     sections = [
         "1. Student details",
         "2. Pre-lab preparation",
@@ -3546,16 +3645,8 @@ def render_sidebar() -> str:
             unsafe_allow_html=True,
         )
 
-    if valid_jcu_student_id(st.session_state.get("student_id", "")):
-        st.sidebar.markdown(
-            '<div class="sidebar-status-inline good"><span class="dot"></span><span>Progress automatically saved</span></div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.sidebar.markdown(
-            '<div class="sidebar-status-inline warn"><span class="dot"></span><span>Enter a valid JCU ID to enable autosave</span></div>',
-            unsafe_allow_html=True,
-        )
+    # Fill this after the current run's save, so errors never show a green badge.
+    autosave_placeholder = st.sidebar.empty()
     st.sidebar.markdown(
         """
         <div class="sidebar-summary-card">
@@ -3581,10 +3672,13 @@ def render_sidebar() -> str:
         ''',
         unsafe_allow_html=True,
     )
-    return selected_page
+    return selected_page, autosave_placeholder
 
 
-page = render_sidebar()
+page, autosave_placeholder = render_sidebar()
+if page != "5. Data collection":
+    # On return, rebuild the editor from committed lab_data with a fresh baseline.
+    reset_physical_editor()
 
 if page == "1. Student details":
     section_start()
@@ -3606,4 +3700,14 @@ else:
     section_report()
 
 # Persist the latest serialisable values after every Streamlit rerun.
-save_student_progress()
+saved = save_student_progress()
+autosave_message = (
+    "Progress automatically saved" if saved
+    else "Autosave unavailable — download a readings backup" if st.session_state.get("autosave_error")
+    else "Enter a valid JCU ID to enable autosave"
+)
+autosave_class = "good" if saved else "warn"
+autosave_placeholder.markdown(
+    f'<div class="sidebar-status-inline {autosave_class}"><span class="dot"></span><span>{autosave_message}</span></div>',
+    unsafe_allow_html=True,
+)
