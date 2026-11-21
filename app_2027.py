@@ -2231,10 +2231,22 @@ def staff_workspace(root):
         st.code(prompt,language=None)
 
 
+def apply_theme():
+    """Send CSS exclusively through the HTML renderer, never Markdown.
+
+    Flattening the style also prevents indentation from being interpreted as a
+    Markdown code block if a caller accidentally changes the rendering API.
+    """
+    stylesheet=re.sub(r"</?style\b[^>]*>","",CSS,flags=re.IGNORECASE)
+    stylesheet=re.sub(r"/\*.*?\*/","",stylesheet,flags=re.DOTALL)
+    stylesheet=" ".join(line.strip() for line in stylesheet.splitlines() if line.strip())
+    st.html("<style>"+stylesheet+"</style>")
+
+
 def main(root:Path):
     initialise(root)
     preserve_student_widgets()
-    st.html(CSS)
+    apply_theme()
     render_brand_header(root)
     if st.session_state.pop("_tl27_restored_notice",False):
         st.success("Your saved 2027 work has been restored on this browser.")
@@ -2261,7 +2273,7 @@ def main(root:Path):
     backup_slot=st.sidebar.empty()
     with st.sidebar.expander("Progress and backups"):
         st.caption("Work is saved on this browser by student ID and separately on the app server using your private resume URL. Keep a downloaded backup for another device or if browser storage is cleared.")
-    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027.3</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
     with st.sidebar.expander("Staff tools"):
         staff=st.toggle("Staff checking workspace",value=False,key="_tl27_staff_workspace")
     if staff:
