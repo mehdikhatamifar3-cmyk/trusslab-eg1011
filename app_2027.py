@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import copy
+import base64
+from html import escape
 import hashlib
 import hmac
 import io
@@ -21,18 +23,1397 @@ SECTIONS = (
     "7 Results and explanations", "8 Capacity challenge", "9 Review and submission",
 )
 CSS = """
+
+    <style>
+      :root { --jcu-blue:#A62C63; --jcu-blue-dark:#7D1F49; --ink:#29202A; --muted:#70616C; --line:#ECDCE3; }
+      html { scroll-behavior:smooth; }
+      .stApp { background:#ffffff; color:var(--ink); }
+      .block-container { max-width:1420px; padding-top:0.75rem; padding-bottom:2.5rem; }
+      [data-testid="stSidebar"] {
+        background:linear-gradient(180deg,#FCF8FA 0%,#F9F1F5 60%,#F6ECF0 100%);
+        border-right:1px solid #E9D7DF;
+        min-width:278px;
+        max-width:298px;
+      }
+      [data-testid="stSidebar"] > div:first-child { padding-top:0.7rem; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] > div { gap:0.28rem; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        background:rgba(255,255,255,0.88);
+        border:1px solid #ECDBE3;
+        border-radius:10px;
+        padding:0.50rem 0.62rem;
+        margin:0.06rem 0;
+        transition:all 0.16s ease;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+        border-color:#D1A8BA;
+        background:#ffffff;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#FCEDF4;
+        border-color:#CA88A6;
+        box-shadow:inset 3px 0 0 var(--jcu-blue), 0 1px 3px rgba(42,15,27,0.04);
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div { background-color:#A62C63; }
+      .sidebar-brand {
+        background:transparent;
+        color:var(--ink);
+        padding:5px 4px 13px 13px;
+        margin:1px 0 12px;
+        border-left:3px solid var(--jcu-blue);
+      }
+      .sidebar-brand::before { display:none; }
+      .sidebar-brand .course {
+        color:#866172;
+        font-size:9.5px;
+        font-weight:800;
+        letter-spacing:0.105em;
+        text-transform:uppercase;
+      }
+      .sidebar-brand .title {
+        color:#541A34;
+        font-size:21px;
+        font-weight:800;
+        line-height:1.08;
+        margin-top:4px;
+      }
+      .sidebar-brand .subtitle {
+        color:#8A6877;
+        font-size:11px;
+        line-height:1.42;
+        margin-top:6px;
+        max-width:230px;
+      }
+      .sidebar-brand .rule { display:none; }
+      .sidebar-section-label {
+        color:#745261; font-size:10px; font-weight:800; letter-spacing:0.12em;
+        text-transform:uppercase; margin:14px 2px 7px;
+      }
+      .sidebar-card {
+        background:rgba(255,255,255,0.78); border:1px solid #ECDCE3; border-radius:10px;
+        padding:10px 11px; margin:7px 0;
+      }
+      .sidebar-card .label { color:#70616C; font-size:10px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; }
+      .sidebar-card .value { color:#29202A; font-size:13px; font-weight:700; margin-top:3px; }
+      .sidebar-card .meta { color:#70616C; font-size:11px; line-height:1.42; margin-top:5px; }
+      .sidebar-badge {
+        display:inline-block; padding:3px 8px; border-radius:999px;
+        background:#FFE8F2; color:#A62C63; border:1px solid #F5C7DC;
+        font-size:10px; font-weight:800; letter-spacing:0.04em; margin-top:7px;
+      }
+      .sidebar-status-good { color:#166534; background:#ecfdf3; border:1px solid #bbf7d0; border-radius:9px; padding:8px 10px; font-size:11px; margin:7px 0; }
+      .sidebar-status-warn { color:#854d0e; background:#fffbeb; border:1px solid #fde68a; border-radius:9px; padding:8px 10px; font-size:11px; margin:7px 0; }
+      .sidebar-footer { color:#967A87; font-size:10.5px; line-height:1.45; margin-top:13px; padding:10px 3px 2px; border-top:1px solid #E8D7DF; }
+      header[data-testid="stHeader"] { background:transparent; }
+      #MainMenu, footer { visibility:hidden; }
+      .app-header {
+        display:grid;
+        grid-template-columns:235px minmax(0,1fr) 235px;
+        gap:28px;
+        align-items:center;
+        padding:8px 6px 16px;
+      }
+      .header-logo {
+        display:flex;
+        align-items:center;
+        min-height:82px;
+        padding:2px 26px 2px 2px;
+        border-right:1px solid #EEE0E6;
+      }
+      .header-logo img { display:block; width:100%; max-width:220px; height:auto; }
+      .app-header-title .kicker {
+        color:var(--jcu-blue);
+        font-size:10px;
+        font-weight:800;
+        letter-spacing:0.13em;
+        text-transform:uppercase;
+        margin-bottom:5px;
+      }
+      .app-header-title h1 { margin:0; font-size:34px; line-height:1.03; color:#29202A; letter-spacing:-0.025em; }
+      .app-header-title p { margin:8px 0 0; color:#735361; line-height:1.48; font-size:14px; max-width:720px; }
+      .app-header-meta {
+        border-left:1px solid #EEE0E6;
+        padding-left:24px;
+        text-align:left;
+      }
+      .app-header-meta .label { color:#967182; font-size:9.5px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; }
+      .app-header-meta .title { color:#472434; font-size:13px; font-weight:750; line-height:1.35; margin-top:4px; }
+      .app-header-meta .designer { color:#967A87; font-size:10.5px; line-height:1.45; margin-top:10px; }
+      .app-divider { height:1px; background:linear-gradient(90deg,#EBD8E1 0%,#F6EEF2 100%); margin:1px 0 19px; }
+      .info { background:#FFE8F2; border:1px solid #F5C7DC; border-radius:10px; padding:13px 15px; color:#6D2344; margin:8px 0 16px; }
+      .hint { background:#ecfdf3; border:1px solid #bbf7d0; border-radius:10px; padding:11px 13px; color:#166534; margin:8px 0 14px; }
+      .warning { background:#fff8e8; border:1px solid #f3d69b; border-radius:10px; padding:11px 13px; color:#7c4a03; margin:8px 0 14px; }
+      .good { background:#ecfdf3; border:1px solid #bbf7d0; color:#166534; border-radius:9px; padding:10px 12px; margin:6px 0; }
+      .bad { background:#fff1f2; border:1px solid #fecdd3; color:#9f1239; border-radius:9px; padding:10px 12px; margin:6px 0; }
+      .card { border:1px solid #EADFE4; border-radius:10px; padding:14px 16px; margin-bottom:14px; background:#fff; }
+      .small-note { color:#70616C; font-size:13px; line-height:1.45; }
+      .page-heading {
+        padding:2px 0 12px; margin:0 0 6px; border-bottom:1px solid #F2E6EB;
+      }
+      .page-heading .section-label {
+        color:#A62C63; font-size:10px; font-weight:800; letter-spacing:0.13em;
+        text-transform:uppercase; margin-bottom:4px;
+      }
+      .page-heading .section-title {
+        color:#29202A; font-size:25px; font-weight:800; line-height:1.16; letter-spacing:-0.02em;
+      }
+      .page-heading .section-summary {
+        color:#836070; font-size:13px; line-height:1.48; margin-top:5px; max-width:920px;
+      }
+      div[data-testid="stPopover"] > button {
+        border:1px solid #E4C9D5 !important; border-radius:999px !important;
+        background:#FDF7FA !important; color:#5F233E !important; font-weight:750 !important;
+        min-height:2.25rem !important; padding:0.35rem 0.8rem !important;
+        box-shadow:none !important;
+      }
+      div[data-testid="stPopover"] > button:hover {
+        background:#FCEDF4 !important; border-color:#CC8EAA !important; color:#A62C63 !important;
+      }
+      .help-completion {
+        background:#FDF2F7; border:1px solid #F3D4E2; border-left:4px solid #A62C63;
+        border-radius:9px; padding:9px 11px; color:#6B344D; font-size:12px; line-height:1.45; margin-top:10px;
+      }
+      div[data-testid="stMetric"] { background:#ffffff; border:1px solid #F0E2E8; padding:10px 12px; border-radius:10px; }
+      .start-hero {
+        display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
+        padding:18px 20px; margin:0 0 18px; border:1px solid #ECD7E0; border-radius:14px;
+        background:linear-gradient(135deg,#FEF8FB 0%,#ffffff 58%,#FCF4F8 100%);
+        box-shadow:0 3px 12px rgba(42,15,27,0.035);
+      }
+      .start-hero .eyebrow { color:#A62C63; font-size:10px; font-weight:800; letter-spacing:0.13em; text-transform:uppercase; margin-bottom:5px; }
+      .start-hero .headline { color:#29202A; font-size:22px; line-height:1.15; font-weight:800; }
+      .start-hero .description { color:#735361; font-size:13px; line-height:1.5; max-width:720px; margin-top:7px; }
+      .start-steps { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; min-width:330px; }
+      .start-step-chip {
+        display:flex; align-items:center; gap:7px; padding:7px 10px; border-radius:999px;
+        background:#ffffff; border:1px solid #EDD8E1; color:#664252; font-size:11px; font-weight:700; white-space:nowrap;
+      }
+      .start-step-chip .num {
+        display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; border-radius:50%;
+        background:#FFE8F2; color:#A62C63; font-size:10px; font-weight:800;
+      }
+      .panel-heading { margin:0 0 3px; color:#29202A; font-size:18px; font-weight:800; }
+      .panel-subheading { margin:0 0 12px; color:#70616C; font-size:12px; line-height:1.45; }
+      .start-id-note {
+        background:#fffaf0; border:1px solid #f2d8a4; border-left:4px solid #c98b21; border-radius:9px;
+        color:#71440a; font-size:11.5px; line-height:1.45; padding:9px 11px; margin:4px 0 11px;
+      }
+      .mode-summary {
+        border-radius:10px; padding:10px 12px; margin:8px 0 2px; font-size:12px; line-height:1.45;
+        background:#FCF4F8; border:1px solid #EED7E1; color:#6B4053;
+      }
+      .submission-summary {
+        margin-top:12px; padding:11px 12px; border-radius:10px; background:#FCF8FA; border:1px solid #EEE1E7;
+        color:#745261; font-size:11.5px; line-height:1.5;
+      }
+      .submission-summary b { color:#471F31; }
+      .apparatus-topline { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:2px; }
+      .apparatus-title { color:#29202A; font-size:18px; font-weight:800; line-height:1.2; }
+      .apparatus-caption { color:#70616C; font-size:12px; line-height:1.45; margin-top:4px; }
+      .apparatus-badges { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+      .apparatus-badge {
+        padding:5px 8px; border-radius:999px; background:#FBF3F7; border:1px solid #EDD8E1;
+        color:#664252; font-size:10.5px; font-weight:700; white-space:nowrap;
+      }
+      .apparatus-legend {
+        display:flex; flex-wrap:wrap; justify-content:center; gap:9px; margin:-2px 0 8px;
+        color:#70616C; font-size:10.5px;
+      }
+      .legend-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+      .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+      .detail-box { background:#FCF8FA; border:1px solid #EEE1E7; border-radius:9px; padding:10px 11px; color:#745261; font-size:11px; line-height:1.5; }
+      .detail-box b { color:#471F31; }
+
+      /* Consistent controls and interaction styling */
+      .stButton > button, .stDownloadButton > button {
+        min-height:2.42rem;
+        border-radius:9px;
+        font-weight:700;
+        transition:background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+      }
+      .stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"] {
+        background:var(--jcu-blue);
+        border-color:var(--jcu-blue);
+        color:#ffffff;
+        box-shadow:0 2px 6px rgba(166,44,99,.16);
+      }
+      .stButton > button[kind="primary"]:hover, .stDownloadButton > button[kind="primary"]:hover {
+        background:var(--jcu-blue-dark);
+        border-color:var(--jcu-blue-dark);
+        box-shadow:0 3px 9px rgba(166,44,99,.22);
+      }
+      .stButton > button[kind="secondary"] {
+        background:#ffffff;
+        border-color:#E1CAD4;
+        color:#5A3143;
+      }
+      .stButton > button[kind="secondary"]:hover { border-color:#C488A3; color:var(--jcu-blue); }
+      [data-baseweb="input"] > div, [data-baseweb="select"] > div, [data-baseweb="textarea"] > div {
+        border-radius:9px !important;
+        border-color:#E7D5DD !important;
+        background:#FDFBFC !important;
+      }
+      [data-baseweb="input"] > div:focus-within, [data-baseweb="select"] > div:focus-within, [data-baseweb="textarea"] > div:focus-within {
+        border-color:#C56E95 !important;
+        box-shadow:0 0 0 3px rgba(166,44,99,.09) !important;
+        background:#ffffff !important;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-color:#ECDCE3 !important;
+        border-radius:14px !important;
+        box-shadow:0 3px 12px rgba(42,15,27,.035);
+        background:#ffffff;
+      }
+      div[data-testid="stAlert"] { border-radius:10px; }
+      div[data-testid="stDataEditor"] { border:1px solid #ECDCE3; border-radius:11px; overflow:hidden; }
+      div[data-testid="stMetric"] {
+        background:#ffffff;
+        border:1px solid #EEDFE6;
+        padding:12px 14px;
+        border-radius:11px;
+        box-shadow:0 2px 8px rgba(42,15,27,.025);
+      }
+      details[data-testid="stExpander"] { border-color:#ECDCE3 !important; border-radius:10px !important; background:#FDFBFC; }
+      h1, h2, h3 { letter-spacing:-0.018em; }
+      h2, h3 { color:#29202A; }
+      .stCaption { color:#947482; }
+
+      @media (max-width:980px) {
+        .start-hero { flex-direction:column; }
+        .start-steps { justify-content:flex-start; min-width:0; }
+        .detail-grid { grid-template-columns:1fr; }
+        .app-header { grid-template-columns:1fr; text-align:center; gap:14px; }
+        .header-logo { justify-content:center; border-right:0; border-bottom:1px solid #EEE0E6; padding:2px 12px 15px; }
+        .header-logo img { max-width:235px; }
+        .app-header-meta { border-left:0; border-top:1px solid #EEE0E6; padding:13px 0 0; text-align:center; }
+      }
+    </style>
+    
+
+    <style>
+      :root {
+        --jcu-blue:#A62C63;
+        --jcu-blue-dark:#7D1F49;
+        --secondary:#C34C83;
+        --success:#27AE60;
+        --warning-ui:#F2994A;
+        --neutral:#FCF8FA;
+        --ink:#29202A;
+        --muted:#70616C;
+        --line:#F0E3E9;
+      }
+
+      /* A lighter, narrower sidebar that supports rather than dominates. */
+      [data-testid="stSidebar"] {
+        background:#FFFFFF;
+        border-right:1px solid var(--line);
+        min-width:236px;
+        max-width:248px;
+      }
+      [data-testid="stSidebar"] > div:first-child { padding:0.70rem 0.78rem 1rem; }
+      .sidebar-brand {
+        padding:3px 2px 10px;
+        margin:0 0 7px;
+        border-left:0;
+        background:transparent;
+      }
+      .sidebar-brand .title { color:var(--jcu-blue); font-size:20px; margin:0; }
+      .sidebar-brand .course {
+        color:#745261; font-size:11px; font-weight:700; letter-spacing:0;
+        text-transform:none; margin-top:3px;
+      }
+      .sidebar-brand .subtitle { display:none; }
+
+      .sidebar-progress-head {
+        display:flex; align-items:center; justify-content:space-between;
+        color:#472434; font-size:14px; font-weight:800; margin:5px 1px 5px;
+      }
+      .sidebar-progress-head span { color:var(--jcu-blue); font-size:13px; }
+      .sidebar-progress-meta { color:#947382; font-size:11px; margin:4px 1px 13px; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] { margin-bottom:0; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div { background:#F3E7EC; height:6px; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div { background:var(--secondary); }
+
+      .sidebar-workflow-title { color:#553342; font-size:13px; font-weight:800; margin:5px 1px 6px; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] > div {
+        gap:0; position:relative; padding-left:1px;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        background:transparent; border:0; border-radius:7px;
+        padding:0.42rem 0.32rem; margin:0; min-height:0;
+        transition:background-color .13s ease,color .13s ease;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+        background:#FBF3F7; border:0;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#FBEEF4; border:0; box-shadow:none;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color:var(--jcu-blue); font-weight:800;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child { display:none !important; }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        color:#745261; font-size:12.5px; line-height:1.28; margin:0;
+      }
+
+      .sidebar-pathway {
+        margin-top:14px; padding-top:11px; border-top:1px solid var(--line);
+        color:#967182; font-size:11px; line-height:1.45;
+      }
+      .sidebar-pathway strong { display:block; color:#4A2636; font-size:12.5px; margin-top:2px; }
+      .sidebar-status-inline {
+        display:flex; gap:7px; align-items:flex-start; margin-top:8px;
+        color:#745261; font-size:11px; line-height:1.38;
+      }
+      .sidebar-status-inline .dot {
+        flex:0 0 auto; width:8px; height:8px; border-radius:50%; margin-top:4px; background:#B894A4;
+      }
+      .sidebar-status-inline.good .dot { background:var(--success); }
+      .sidebar-status-inline.warn .dot { background:var(--warning-ui); }
+      .sidebar-footer {
+        border-top:0; margin-top:13px; padding:0 1px; color:#947B86;
+        font-size:10.5px; line-height:1.45;
+      }
+
+      /* Consistent type hierarchy. */
+      .app-header-title h1 { font-size:36px; }
+      .page-heading .section-title { font-size:24px; }
+      .page-heading .section-label {
+        color:var(--jcu-blue); font-size:12px; font-weight:700; letter-spacing:0; text-transform:none;
+      }
+      .panel-heading, .apparatus-title { font-size:18px; }
+      .page-heading .section-summary, .app-header-title p { font-size:14px; }
+      .panel-subheading, .apparatus-caption, .small-note { font-size:12px; }
+
+      /* Fewer boxes: use whitespace, tonal surfaces and accent edges. */
+      .info { background:#FFEFF6; border:0; border-left:4px solid var(--secondary); color:#742448; }
+      .hint, .good { background:#ECFDF3; border:0; border-left:4px solid var(--success); color:#17663A; }
+      .warning { background:#FFF8EC; border:0; border-left:4px solid var(--warning-ui); color:#71440A; }
+      .card { border:0; border-radius:10px; background:var(--neutral); box-shadow:none; }
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        border:0 !important; border-radius:14px !important; background:var(--neutral);
+        box-shadow:none;
+      }
+      .start-id-note {
+        background:transparent; border:0; border-left:3px solid var(--warning-ui);
+        border-radius:0; padding:6px 10px; margin:3px 0 10px;
+      }
+      .mode-summary {
+        background:#FCF2F6; border:0; border-left:3px solid var(--secondary); border-radius:7px;
+      }
+      .submission-summary {
+        background:transparent; border:0; border-top:1px solid var(--line); border-radius:0;
+        padding:11px 0 0; margin-top:15px;
+      }
+      .apparatus-badge { background:#F9EEF3; border:0; color:#664252; }
+      .detail-box { background:#FFFFFF; border:0; box-shadow:0 1px 5px rgba(42,15,27,.04); }
+      div[data-testid="stMetric"] { border:0; background:var(--neutral); box-shadow:none; }
+      div[data-testid="stDataEditor"] { border:1px solid var(--line); box-shadow:none; }
+      details[data-testid="stExpander"] { border:0 !important; background:var(--neutral); }
+
+      /* Keep the first page spacious and visually prioritise data entry. */
+      .student-form-intro { margin:0 0 15px; }
+      .student-form-intro .title { color:#29202A; font-size:18px; font-weight:800; }
+      .student-form-intro .text { color:#70616C; font-size:12px; line-height:1.5; margin-top:4px; }
+      .apparatus-soft-note {
+        color:#745261; font-size:11.5px; line-height:1.45; margin:0 0 8px;
+      }
+
+      @media (max-width:980px) {
+        [data-testid="stSidebar"] { min-width:220px; max-width:232px; }
+      }
+    </style>
+    
+
+    <style>
+      /* Reduce header-logo dominance while preserving JCU identity. */
+      .header-logo img { max-width:176px !important; }
+      .header-logo { min-height:68px; padding-right:20px; }
+
+      /* Modern, compact sidebar. */
+      [data-testid="stSidebar"] > div:first-child {
+        padding:0.72rem 0.78rem 1rem;
+      }
+      .sidebar-brand { margin-bottom:4px; padding-bottom:7px; }
+      .sidebar-brand .title { font-size:19px; }
+      .sidebar-brand .course { font-size:10.5px; }
+
+      .sidebar-progress-head { margin-top:3px; }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div {
+        height:7px;
+        border-radius:999px;
+        background:#F3E7EC;
+        overflow:hidden;
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div {
+        border-radius:999px;
+        background:linear-gradient(90deg,#A62C63 0%,#C34C83 100%);
+        transition:width .45s ease;
+      }
+      .sidebar-progress-meta { margin-bottom:11px; }
+      .sidebar-workflow-title { margin-top:2px; }
+
+      [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        position:relative;
+        border-left:3px solid transparent;
+        border-radius:8px;
+        padding:0.43rem 0.42rem 0.43rem 0.50rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#FBEAF2;
+        border-left-color:#C34C83;
+        box-shadow:0 2px 7px rgba(166,44,99,.07);
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color:#A62C63;
+        font-weight:800;
+      }
+
+      .sidebar-pathway { margin-top:11px; padding-top:10px; }
+      .sidebar-summary-card {
+        margin-top:12px;
+        padding:11px 11px 10px;
+        border-radius:11px;
+        background:#FCF8FA;
+        box-shadow:0 2px 9px rgba(42,15,27,.045);
+      }
+      .sidebar-summary-title {
+        color:#4A2536;
+        font-size:12px;
+        font-weight:800;
+        margin-bottom:7px;
+      }
+      .sidebar-summary-row {
+        display:grid;
+        grid-template-columns:18px 1fr;
+        gap:7px;
+        align-items:start;
+        color:#7A5A68;
+        font-size:10.7px;
+        line-height:1.35;
+        margin:5px 0;
+      }
+      .sidebar-summary-row .icon { text-align:center; }
+      .sidebar-summary-row b { color:#4A2636; font-weight:750; }
+      .sidebar-footer { margin-top:11px; }
+
+      /* Compact welcome dashboard below the page heading. */
+      .welcome-dashboard {
+        display:grid;
+        grid-template-columns:minmax(0,1.15fr) minmax(330px,.85fr);
+        gap:18px;
+        align-items:center;
+        margin:2px 0 18px;
+        padding:16px 18px;
+        border-radius:13px;
+        background:linear-gradient(135deg,#FDF7FA 0%,#FFFFFF 65%);
+        box-shadow:0 3px 14px rgba(42,15,27,.055);
+      }
+      .welcome-dashboard .eyebrow {
+        color:#C34C83;
+        font-size:11px;
+        font-weight:800;
+        margin-bottom:4px;
+      }
+      .welcome-dashboard .title {
+        color:#29202A;
+        font-size:20px;
+        font-weight:800;
+        line-height:1.2;
+      }
+      .welcome-dashboard .text {
+        color:#836070;
+        font-size:12.5px;
+        line-height:1.48;
+        margin-top:5px;
+      }
+      .welcome-list {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:7px 12px;
+      }
+      .welcome-item {
+        display:flex;
+        align-items:flex-start;
+        gap:7px;
+        color:#664252;
+        font-size:11.5px;
+        line-height:1.35;
+      }
+      .welcome-item .check { color:#27AE60; font-weight:900; }
+      .welcome-time {
+        grid-column:1 / -1;
+        margin-top:2px;
+        color:#745261;
+        font-size:11.5px;
+        font-weight:700;
+      }
+
+      /* Stronger contrast for the apparatus panel. */
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        background:#FFFFFF !important;
+        border:0 !important;
+        box-shadow:0 5px 18px rgba(42,15,27,.07) !important;
+      }
+      .apparatus-soft-note { margin-bottom:5px; }
+
+      /* Reduce density on the first page. */
+      .student-form-intro { margin-bottom:10px; }
+      .student-form-intro .text { max-width:520px; }
+      .submission-summary { font-size:11.2px; line-height:1.42; }
+      .mode-summary { font-size:11.5px; line-height:1.4; }
+
+      @media (max-width:1100px) {
+        .welcome-dashboard { grid-template-columns:1fr; }
+        .welcome-list { grid-template-columns:1fr 1fr; }
+      }
+      @media (max-width:760px) {
+        .welcome-list { grid-template-columns:1fr; }
+        .welcome-time { grid-column:auto; }
+        .header-logo img { max-width:190px !important; }
+      }
+    </style>
+    
+
+    <style>
+      /* Keep the product name visually dominant over the institutional mark. */
+      .app-header {
+        grid-template-columns:185px minmax(0,1fr) 220px;
+        gap:22px;
+      }
+      .header-logo {
+        min-height:60px;
+        padding:1px 18px 1px 0;
+      }
+      .header-logo img {
+        width:auto !important;
+        max-width:145px !important;
+        max-height:58px;
+        object-fit:contain;
+      }
+
+      /* Lift the welcome panel from the page without creating a heavy card. */
+      .welcome-dashboard {
+        position:relative;
+        overflow:hidden;
+        background:linear-gradient(135deg,#FFFFFF 0%,#FFF7FB 100%);
+        border:1px solid #F5D9E6;
+        box-shadow:0 8px 24px rgba(166,44,99,.075);
+        padding:18px 20px;
+      }
+      .welcome-dashboard::before {
+        content:"";
+        position:absolute;
+        top:0;
+        left:0;
+        right:0;
+        height:3px;
+        background:linear-gradient(90deg,#A62C63 0%,#C34C83 100%);
+      }
+      .welcome-dashboard .eyebrow {
+        color:#A62C63;
+        font-size:11px;
+      }
+      .welcome-dashboard .title {
+        font-size:21px;
+      }
+      .welcome-dashboard .text {
+        max-width:610px;
+      }
+      .welcome-list {
+        border-left:1px solid #F3E2EA;
+        padding-left:18px;
+      }
+
+      /* Make the current workflow stage unmistakable. */
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background:#F9DCE9;
+        border-left:5px solid #A62C63;
+        border-radius:8px;
+        box-shadow:0 3px 10px rgba(166,44,99,.10);
+        padding-left:0.54rem;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color:#A62C63;
+        font-size:13px;
+        font-weight:850;
+      }
+
+      /* Quiet, structured footer. */
+      .sidebar-footer {
+        margin-top:14px;
+        padding:11px 1px 2px;
+        border-top:1px solid #EDDCE4;
+        color:#967A87;
+        font-size:10.5px;
+        line-height:1.48;
+      }
+      .sidebar-footer .footer-help {
+        color:#70616C;
+        margin-bottom:10px;
+      }
+      .sidebar-footer .footer-version {
+        color:#5E3447;
+        font-weight:800;
+        margin-bottom:2px;
+      }
+
+      @media (max-width:980px) {
+        .app-header { grid-template-columns:1fr; }
+        .header-logo {
+          min-height:auto;
+          padding:0 0 12px;
+        }
+        .header-logo img { max-width:155px !important; }
+        .welcome-list {
+          border-left:0;
+          border-top:1px solid #F3E2EA;
+          padding:12px 0 0;
+        }
+      }
+    </style>
+    
+
+    <style>
+      /* Keep TrussLab as the primary visual anchor; the JCU mark is supporting identity. */
+      .app-header {
+        grid-template-columns:155px minmax(0,1fr) 205px;
+        gap:20px;
+      }
+      .header-logo {
+        min-height:52px;
+        padding:0 15px 0 0;
+      }
+      .header-logo img {
+        max-width:118px !important;
+        max-height:47px;
+      }
+
+      /* Subtle welcome panel with vertically balanced content. */
+      .welcome-dashboard {
+        background:#FFFAFC;
+        border:1px solid #F4E7ED;
+        box-shadow:0 4px 12px rgba(0,0,0,.04);
+        padding:18px 20px;
+        align-items:center;
+      }
+      .welcome-dashboard::before {
+        height:2px;
+      }
+      .welcome-dashboard > div:first-child,
+      .welcome-dashboard .welcome-list {
+        align-self:center;
+      }
+      .welcome-dashboard .welcome-list {
+        align-content:center;
+        min-height:100%;
+      }
+
+      /* Give progress enough visual weight without making the sidebar heavy. */
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div {
+        height:10px;
+        border-radius:999px;
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div {
+        border-radius:999px;
+      }
+
+      /* Make an unselected pathway impossible to overlook. */
+      .pathway-choice-warning {
+        background:#FFF8EC !important;
+        border-left-color:#F2994A !important;
+        color:#71440A !important;
+      }
+      .sidebar-pathway-alert {
+        display:flex;
+        gap:8px;
+        align-items:flex-start;
+        margin-top:12px;
+        padding:9px 10px;
+        border-radius:9px;
+        background:#FFF8EC;
+        border-left:4px solid #F2994A;
+        color:#71440A;
+        font-size:11px;
+        line-height:1.35;
+      }
+      .sidebar-pathway-alert .alert-icon {
+        flex:0 0 auto;
+        font-size:13px;
+        line-height:1.2;
+      }
+      .sidebar-pathway-alert strong {
+        display:block;
+        color:#71440A;
+        font-size:11.5px;
+        font-weight:800;
+      }
+      .sidebar-pathway-alert small {
+        display:block;
+        margin-top:2px;
+        color:#8A5B1A;
+        font-size:10.5px;
+      }
+
+      .sidebar-footer .footer-credit {
+        margin-top:7px;
+        color:#A38A95;
+        font-size:10px;
+      }
+
+      @media (max-width:980px) {
+        .header-logo img { max-width:126px !important; }
+      }
+    </style>
+    
+
+    <style>
+      /* Slightly more compact apparatus reference card. */
+      div[data-testid="stVerticalBlockBorderWrapper"] {
+        padding:0.68rem 0.76rem 0.72rem !important;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] .apparatus-topline {
+        margin-bottom:-2px;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stImage"] {
+        margin-top:-0.18rem;
+        margin-bottom:-0.12rem;
+      }
+      div[data-testid="stVerticalBlockBorderWrapper"] .apparatus-legend {
+        margin-top:-3px;
+      }
+
+      /* Improve workflow scanning without increasing sidebar weight. */
+      [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        font-size:13.5px;
+        font-weight:500;
+        letter-spacing:-0.005em;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        font-size:13.5px;
+        font-weight:800;
+      }
+
+      /* Premium progress treatment: thicker, rounded and subtly illuminated. */
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div {
+        height:11px;
+        border-radius:999px;
+        background:#F4E6EC;
+        box-shadow:inset 0 1px 2px rgba(42,15,27,.08);
+        overflow:hidden;
+      }
+      [data-testid="stSidebar"] [data-testid="stProgress"] > div > div {
+        border-radius:999px;
+        background:linear-gradient(90deg,#A62C63 0%,#B13A72 52%,#C34C83 100%);
+        box-shadow:0 1px 5px rgba(195,76,131,.28);
+        transition:width .45s ease;
+      }
+
+      /* Explicit first action for students who are new to the practical. */
+      .welcome-next-step {
+        margin:-8px 2px 18px;
+        color:#745261;
+        font-size:13px;
+        line-height:1.45;
+      }
+      .welcome-next-step b {
+        color:#A62C63;
+        font-weight:800;
+      }
+
+      @media (max-width:760px) {
+        .welcome-next-step { margin-top:-6px; }
+      }
+    </style>
+    
+
+    <style>
+      /* Reusable section dashboard: the same visual language as the first page. */
+      .section-dashboard {
+        display:grid;
+        grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr);
+        gap:20px;
+        align-items:center;
+        margin:2px 0 18px;
+        padding:18px 20px;
+        border-radius:13px;
+        background:#FFFAFC;
+        border:1px solid #F4E6EC;
+        box-shadow:0 4px 12px rgba(0,0,0,.04);
+        position:relative;
+        overflow:hidden;
+      }
+      .section-dashboard::before {
+        content:"";
+        position:absolute;
+        top:0;
+        left:0;
+        right:0;
+        height:2px;
+        background:linear-gradient(90deg,#A62C63 0%,#C34C83 100%);
+      }
+      .section-dashboard .eyebrow {
+        color:#A62C63;
+        font-size:11px;
+        font-weight:800;
+        margin-bottom:4px;
+      }
+      .section-dashboard .title {
+        color:#29202A;
+        font-size:20px;
+        line-height:1.2;
+        font-weight:800;
+        letter-spacing:-0.015em;
+      }
+      .section-dashboard .description {
+        color:#836070;
+        font-size:12.5px;
+        line-height:1.48;
+        margin-top:5px;
+        max-width:650px;
+      }
+      .section-dashboard .dashboard-list {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:7px 12px;
+        align-content:center;
+        border-left:1px solid #F3E2EA;
+        padding-left:18px;
+      }
+      .section-dashboard .dashboard-item {
+        display:flex;
+        align-items:flex-start;
+        gap:7px;
+        color:#664252;
+        font-size:11.5px;
+        line-height:1.36;
+      }
+      .section-dashboard .dashboard-item .check {
+        color:#27AE60;
+        font-weight:900;
+        flex:0 0 auto;
+      }
+      .section-dashboard .dashboard-meta {
+        grid-column:1 / -1;
+        display:flex;
+        flex-wrap:wrap;
+        gap:7px;
+        margin-top:3px;
+      }
+      .section-dashboard .meta-pill {
+        display:inline-flex;
+        align-items:center;
+        gap:5px;
+        padding:4px 8px;
+        border-radius:999px;
+        background:#FBEEF4;
+        color:#733651;
+        font-size:10.5px;
+        font-weight:700;
+      }
+      .section-next-action {
+        margin:-8px 2px 18px;
+        color:#745261;
+        font-size:13px;
+        line-height:1.45;
+      }
+      .section-next-action b { color:#A62C63; font-weight:800; }
+
+      /* Content hierarchy: fewer hard borders, more spacing and soft surfaces. */
+      .content-heading { margin:0 0 11px; }
+      .content-heading .title {
+        color:#29202A;
+        font-size:18px;
+        font-weight:800;
+        line-height:1.25;
+      }
+      .content-heading .text {
+        color:#70616C;
+        font-size:12px;
+        line-height:1.48;
+        margin-top:4px;
+      }
+      .soft-panel {
+        background:#FFFFFF;
+        border:1px solid #F3E7EC;
+        border-radius:12px;
+        padding:14px 15px;
+        box-shadow:0 3px 12px rgba(42,15,27,.04);
+        margin-bottom:13px;
+      }
+      .soft-panel.tint { background:#FEF8FB; }
+      .soft-panel .panel-title {
+        color:#441C2E;
+        font-size:15px;
+        font-weight:800;
+        margin-bottom:5px;
+      }
+      .soft-panel .panel-text {
+        color:#836070;
+        font-size:11.5px;
+        line-height:1.48;
+      }
+      .process-list {
+        margin:7px 0 0;
+        padding:0;
+        list-style:none;
+        counter-reset:steps;
+      }
+      .process-list li {
+        counter-increment:steps;
+        display:grid;
+        grid-template-columns:23px 1fr;
+        gap:8px;
+        align-items:start;
+        color:#6E4A5A;
+        font-size:11.5px;
+        line-height:1.46;
+        margin:7px 0;
+      }
+      .process-list li::before {
+        content:counter(steps);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:20px;
+        height:20px;
+        border-radius:50%;
+        background:#FBEAF2;
+        color:#A62C63;
+        font-size:10px;
+        font-weight:800;
+      }
+      .mini-rule { height:1px; background:#F3E7EC; margin:12px 0; }
+      .status-strip {
+        display:flex;
+        align-items:flex-start;
+        gap:9px;
+        border-radius:10px;
+        padding:10px 12px;
+        margin:9px 0 14px;
+        font-size:11.5px;
+        line-height:1.43;
+      }
+      .status-strip.info { background:#FFEFF6; color:#742448; border:0; }
+      .status-strip.success { background:#ECFDF3; color:#17663A; }
+      .status-strip.warning { background:#FFF8EC; color:#71440A; }
+      .status-strip .status-icon { flex:0 0 auto; font-size:14px; line-height:1.15; }
+      .sign-convention {
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+        margin:4px 0 13px;
+      }
+      .sign-chip {
+        padding:5px 9px;
+        border-radius:999px;
+        font-size:10.5px;
+        font-weight:800;
+      }
+      .sign-chip.tension { background:#ECFDF3; color:#17663A; }
+      .sign-chip.compression { background:#FFF1F2; color:#9F1239; }
+      .report-note {
+        background:#FCF8FA;
+        border-left:4px solid #C34C83;
+        border-radius:8px;
+        padding:11px 13px;
+        color:#745261;
+        font-size:11.5px;
+        line-height:1.5;
+        margin:12px 0 2px;
+      }
+      .report-note b { color:#522338; }
+      .checklist-grid {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+        margin:11px 0;
+      }
+      .checklist-item {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:8px 9px;
+        border-radius:8px;
+        background:#FCF8FA;
+        color:#745261;
+        font-size:11px;
+        line-height:1.35;
+      }
+      .checklist-item.done { background:#ECFDF3; color:#17663A; }
+      .checklist-item .mark { font-weight:900; }
+
+      /* Keep plots and tables visually contained without heavy frames. */
+      .element-container:has(div[data-testid="stDataFrame"]),
+      .element-container:has(div[data-testid="stDataEditor"]) {
+        margin-bottom:0.55rem;
+      }
+      div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {
+        border-radius:11px;
+        overflow:hidden;
+      }
+
+      @media (max-width:1050px) {
+        .section-dashboard { grid-template-columns:1fr; }
+        .section-dashboard .dashboard-list {
+          border-left:0;
+          border-top:1px solid #F3E2EA;
+          padding:12px 0 0;
+        }
+      }
+      @media (max-width:720px) {
+        .section-dashboard .dashboard-list,
+        .checklist-grid { grid-template-columns:1fr; }
+      }
+    </style>
+    
+
+    <style>
+      :root {
+        color-scheme: light !important;
+        --trusslab-ink: #29202A;
+        --trusslab-muted: #625360;
+        --trusslab-surface: #FFFFFF;
+        --trusslab-input: #FFFFFF;
+      }
+
+      html, body, [data-testid="stAppViewContainer"], .stApp {
+        background-color: var(--trusslab-surface) !important;
+        color: var(--trusslab-ink) !important;
+      }
+
+      /* Native Streamlit text and widget labels. */
+      [data-testid="stAppViewContainer"] .stMarkdown,
+      [data-testid="stAppViewContainer"] .stMarkdown p,
+      [data-testid="stAppViewContainer"] .stMarkdown li,
+      [data-testid="stAppViewContainer"] .stWidgetLabel,
+      [data-testid="stAppViewContainer"] .stWidgetLabel p,
+      [data-testid="stAppViewContainer"] [data-testid="stRadio"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stRadio"] label p,
+      [data-testid="stAppViewContainer"] [data-testid="stCheckbox"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stCheckbox"] label p,
+      [data-testid="stAppViewContainer"] [data-testid="stSelectbox"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stNumberInput"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stTextInput"] label,
+      [data-testid="stAppViewContainer"] [data-testid="stTextArea"] label {
+        color: var(--trusslab-ink) !important;
+        -webkit-text-fill-color: var(--trusslab-ink) !important;
+        opacity: 1 !important;
+      }
+
+      /* Inputs and dropdowns stay light with dark, readable values. */
+      [data-baseweb="input"] > div,
+      [data-baseweb="textarea"] > div,
+      [data-baseweb="select"] > div {
+        background-color: var(--trusslab-input) !important;
+        color: var(--trusslab-ink) !important;
+      }
+      [data-baseweb="input"] input,
+      [data-baseweb="textarea"] textarea,
+      [data-baseweb="select"] input,
+      [data-baseweb="select"] span,
+      [role="listbox"],
+      [role="listbox"] * {
+        color: var(--trusslab-ink) !important;
+        -webkit-text-fill-color: var(--trusslab-ink) !important;
+        opacity: 1 !important;
+      }
+      [role="listbox"] {
+        background-color: #FFFFFF !important;
+      }
+      input::placeholder, textarea::placeholder {
+        color: #70616C !important;
+        -webkit-text-fill-color: #70616C !important;
+        opacity: 1 !important;
+      }
+
+      /* Radio and checkbox controls must remain visible on white surfaces. */
+      [data-testid="stRadio"] [role="radiogroup"] {
+        color: var(--trusslab-ink) !important;
+      }
+      [data-testid="stRadio"] label > div:first-child,
+      [data-testid="stCheckbox"] label > span:first-child {
+        opacity: 1 !important;
+      }
+
+      /* Containers used by the practical questions and panels. */
+      div[data-testid="stVerticalBlockBorderWrapper"],
+      details[data-testid="stExpander"],
+      div[data-testid="stMetric"],
+      .soft-panel,
+      .section-dashboard,
+      .welcome-dashboard,
+      .card,
+      .detail-box {
+        background-color: #FFFFFF !important;
+        color: var(--trusslab-ink) !important;
+      }
+
+      /* Preserve intentional semantic colours while preventing washed-out text. */
+      .content-heading .text,
+      .page-heading .section-summary,
+      .section-dashboard .description,
+      .section-next-action,
+      .panel-subheading,
+      .apparatus-caption,
+      .small-note,
+      [data-testid="stCaptionContainer"],
+      [data-testid="stCaptionContainer"] p {
+        color: var(--trusslab-muted) !important;
+        -webkit-text-fill-color: var(--trusslab-muted) !important;
+        opacity: 1 !important;
+      }
+      .status-strip.info, .status-strip.info * {
+        color: #742448 !important;
+        -webkit-text-fill-color: #742448 !important;
+      }
+      .status-strip.success, .status-strip.success * {
+        color: #17663A !important;
+        -webkit-text-fill-color: #17663A !important;
+      }
+      .status-strip.warning, .status-strip.warning * {
+        color: #71440A !important;
+        -webkit-text-fill-color: #71440A !important;
+      }
+
+      /* Sidebar remains a fixed light interface in every OS/browser mode. */
+      [data-testid="stSidebar"],
+      [data-testid="stSidebar"] > div:first-child {
+        background-color: #FFFFFF !important;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        color: #745261 !important;
+        -webkit-text-fill-color: #745261 !important;
+        opacity: 1 !important;
+      }
+      [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p {
+        color: #A62C63 !important;
+        -webkit-text-fill-color: #A62C63 !important;
+        font-weight: 800 !important;
+      }
+
+      /* Buttons: keep primary buttons white-on-dark-pink and secondary dark-on-white. */
+      .stButton > button[kind="primary"],
+      .stDownloadButton > button[kind="primary"] {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+      }
+      .stButton > button[kind="primary"] *,
+      .stDownloadButton > button[kind="primary"] * {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+      }
+      .stButton > button[kind="secondary"],
+      .stButton > button[kind="secondary"] * {
+        color: #5A3143 !important;
+        -webkit-text-fill-color: #5A3143 !important;
+      }
+
+      /* Tables and metrics. */
+      [data-testid="stMetricLabel"],
+      [data-testid="stMetricLabel"] *,
+      [data-testid="stMetricValue"],
+      [data-testid="stMetricValue"] * {
+        color: var(--trusslab-ink) !important;
+        -webkit-text-fill-color: var(--trusslab-ink) !important;
+      }
+      [data-testid="stDataFrame"],
+      [data-testid="stDataEditor"] {
+        color: var(--trusslab-ink) !important;
+        background-color: #FFFFFF !important;
+      }
+
+      /* Support Windows forced-colour/high-contrast mode rather than hiding controls. */
+      @media (forced-colors: active) {
+        [data-testid="stRadio"] label,
+        [data-testid="stCheckbox"] label,
+        input, textarea, button {
+          forced-color-adjust: auto;
+        }
+      }
+    </style>
+    
 <style>
-.block-container{max-width:1440px;padding-top:2rem;padding-bottom:3rem}
-h1,h2,h3{color:#143654;letter-spacing:-.02em}
-[data-testid="stSidebar"]{background:#f5f8fc}
-.tl-header{display:flex;align-items:center;gap:24px;border-bottom:1px solid #cbd8e6;padding-bottom:18px;margin-bottom:22px}
-.tl-header h1{font-size:2.7rem;margin:0}.tl-kicker{color:#0b4f8a;font-size:.8rem;font-weight:700;letter-spacing:.12em}
-.tl-subtitle{color:#526278;margin-top:4px}.tl-year{display:inline-block;background:#e6f0fb;color:#0b4f8a;border-radius:20px;padding:5px 14px;font-weight:700}
-.tl-note{border-left:4px solid #087ad1;background:#f0f6fc;padding:14px 18px;border-radius:4px;margin:12px 0}
-[data-testid="stMetric"]{border:1px solid #dae3ed;border-radius:10px;padding:12px;background:#fff}
-div.stButton>button[kind="primary"]{background:#0b4f8a;border-color:#0b4f8a}
+/* 2027 uses the 2026 interface with a dark pink accent. */
+:root { --primary-color:#A62C63; --jcu-blue:#A62C63; --jcu-blue-dark:#7D1F49; --secondary:#C34C83; --trusslab-ink:#29202A; --trusslab-muted:#625360; }
+[data-testid="stForm"] { border:0 !important; padding:0 !important; background:transparent !important; }
+[data-testid="stFormSubmitButton"] > button { border-radius:9px; font-weight:700; }
+[data-testid="stFormSubmitButton"] > button[kind="primary"], [data-testid="stBaseButton-primary"] { background:#A62C63 !important; border-color:#A62C63 !important; }
+[data-testid="stFormSubmitButton"] > button[kind="primary"] *, [data-testid="stBaseButton-primary"] * { color:white !important; -webkit-text-fill-color:white !important; }
+[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover, [data-testid="stBaseButton-primary"]:hover { background:#7D1F49 !important; border-color:#7D1F49 !important; }
+[data-testid="stBaseButton-secondary"]:hover, [data-testid="stFileUploaderDropzone"]:hover { border-color:#C34C83 !important; }
+[data-testid="stProgress"] [role="progressbar"] > div, [data-testid="stProgress"] [role="progressbar"] > div > div { background:linear-gradient(90deg,#A62C63,#C34C83) !important; }
+[data-testid="stSlider"] [role="slider"] { background:#A62C63 !important; border-color:#A62C63 !important; }
+[data-baseweb="input"]:focus-within, [data-baseweb="select"]:focus-within, [data-baseweb="textarea"]:focus-within { border-color:#C34C83 !important; }
+[data-testid="stCheckbox"] input:checked + div, [data-testid="stToggle"] input:checked + div { background-color:#A62C63 !important; }
+[data-testid="stRadio"] label:has(input:checked) > div:first-child { background-color:#A62C63 !important; border-color:#A62C63 !important; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background:#F8E6EE !important; border-left-color:#A62C63 !important; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color:#A62C63 !important; -webkit-text-fill-color:#A62C63 !important; }
+[data-testid="stFileUploaderDropzone"] { background:#FDF9FB; border:1px dashed #D5A7BC; border-radius:11px; }
+[data-testid="stAlertContainer"]:has([data-testid="stInfo"]) { background:#FCF2F7; }
+.app-header-meta .version { display:inline-block; margin-top:8px; padding:3px 9px; background:#F8E6EE; color:#A62C63; font-size:10.5px; font-weight:800; border-radius:999px; }
+.apparatus-panel-intro { margin-bottom:7px; }
+[data-testid="stSidebar"] [data-testid="stExpander"] summary { font-size:11px; }
+@media (max-width:720px) { .app-header-title h1 {font-size:30px;} .page-heading .section-title {font-size:22px;} }
 </style>
+
 """
+
+
+
+# Keep the apparatus drawing visually consistent with the 2026 reference.
+# Force-state colours retain their physical meaning.
+from matplotlib.figure import Figure
+from matplotlib.patches import Circle, FancyArrowPatch, Polygon
+
+UI_COLORS = {"member":"#334155", "joint":"#111827", "ring":"#A62C63", "load":"#C62828"}
+
+def _ui_member_colour(force):
+    return "#2E7D32" if force > 1e-7 else "#C62828" if force < -1e-7 else "#64748B"
+
+def _draw_ground(ax, x_left: float, x_right: float, y: float) -> None:
+    """Draw a conventional ground line with short hatch marks."""
+    ax.plot([x_left, x_right], [y, y], color="black", linewidth=1.8, zorder=1)
+    hatch_spacing = 0.10
+    x = x_left + 0.02
+    while x <= x_right - 0.02:
+        ax.plot([x, x - 0.055], [y, y - 0.07], color="black", linewidth=0.9, zorder=1)
+        x += hatch_spacing
+
+def add_supports(ax) -> None:
+    """Draw a pin at A and a roller at C using standard statics symbols."""
+    # Pin support at A: the joint is at the apex and the broad base sits on ground.
+    pin = Polygon(
+        [(0.0, -0.015), (-0.20, -0.27), (0.20, -0.27)],
+        closed=True,
+        facecolor="white",
+        edgecolor="black",
+        linewidth=1.8,
+        zorder=3,
+    )
+    ax.add_patch(pin)
+    _draw_ground(ax, -0.31, 0.31, -0.34)
+
+    # Roller support at C: triangular bearing above rollers and ground.
+    roller = Polygon(
+        [(4.0, -0.015), (3.80, -0.24), (4.20, -0.24)],
+        closed=True,
+        facecolor="white",
+        edgecolor="black",
+        linewidth=1.8,
+        zorder=3,
+    )
+    ax.add_patch(roller)
+    for x in (3.88, 4.00, 4.12):
+        ax.add_patch(
+            Circle((x, -0.315), 0.047, facecolor="white", edgecolor="black", linewidth=1.2, zorder=3)
+        )
+    _draw_ground(ax, 3.69, 4.31, -0.40)
+
+def _reference_figure(mass_kg: float = 0.0, show_force_colours: bool = False, title: str | None = None):
+    points = {"A": (0.0, 0.0), "B": (2.0, 0.0), "C": (4.0, 0.0), "F": (0.0, 2.0), "E": (2.0, 2.0), "D": (4.0, 2.0)}
+    pairs = [
+        ("A", "F", "AF"), ("F", "E", "FE"), ("E", "D", "ED"), ("D", "C", "DC"),
+        ("A", "B", "AB"), ("B", "C", "BC"), ("A", "E", "AE"), ("E", "C", "EC"), ("E", "B", "EB"),
+    ]
+    member_label_offsets = {
+        "AF": (-0.24, 0.0), "FE": (0.0, 0.24), "ED": (0.0, 0.24), "DC": (0.24, 0.0),
+        "AB": (0.0, -0.24), "BC": (0.0, -0.24), "AE": (-0.18, 0.22), "EC": (0.18, 0.22), "EB": (0.24, 0.0),
+    }
+    forces = core.theory(mass_kg)
+    fig = Figure(figsize=(9.7, 5.0), dpi=160)
+    ax = fig.subplots()
+    for start_pt, end_pt, name in pairs:
+        state_colour = _ui_member_colour(forces[name])
+        colour = state_colour if show_force_colours else UI_COLORS["member"]
+        ax.plot([points[start_pt][0], points[end_pt][0]], [points[start_pt][1], points[end_pt][1]], color=colour, linewidth=4, solid_capstyle="round", zorder=2)
+        mx = (points[start_pt][0] + points[end_pt][0]) / 2
+        my = (points[start_pt][1] + points[end_pt][1]) / 2
+        ox, oy = member_label_offsets[name]
+        label_colour = state_colour if show_force_colours else "#A62C63"
+        ax.text(mx + ox, my + oy, name, fontsize=10, fontweight="bold", color=label_colour,
+                bbox=dict(facecolor="white", edgecolor=label_colour, boxstyle="round,pad=0.18", alpha=0.96), zorder=8)
+        if name in core.MEMBERS:
+            ax.add_patch(Circle((mx, my), 0.16, facecolor="white", edgecolor=UI_COLORS["ring"], linewidth=3, zorder=4))
+            ax.add_patch(Circle((mx, my), 0.052, facecolor="white", edgecolor=UI_COLORS["ring"], linewidth=1.8, zorder=5))
+    offsets = {"A": (-0.20, -0.16), "B": (-0.05, -0.36), "C": (0.15, -0.16), "F": (-0.20, 0.20), "E": (-0.02, 0.28), "D": (0.15, 0.20)}
+    joint_colours = {"A": "#7C3AED", "B": "#D97706", "C": "#0891B2", "D": "#2563EB", "E": "#16A34A", "F": "#DC2626"}
+    for label, (x, y) in points.items():
+        ax.scatter([x], [y], s=75, color=UI_COLORS["joint"], zorder=7)
+        ox, oy = offsets[label]
+        ax.text(x + ox, y + oy, label, fontsize=12, fontweight="bold", color=joint_colours[label],
+                bbox=dict(facecolor="white", edgecolor=joint_colours[label], boxstyle="round,pad=0.16", alpha=0.96), zorder=9)
+    add_supports(ax)
+    if mass_kg > 0:
+        ax.add_patch(FancyArrowPatch((2.0, -0.04), (2.0, -0.78), arrowstyle="-|>", mutation_scale=20, color=UI_COLORS["load"], linewidth=2.8))
+        ax.text(2.20, -0.65, f"{mass_kg:g} kg ({mass_kg * 9.81:.1f} N)", fontsize=12, color="#991B1B",
+                bbox=dict(facecolor="white", edgecolor="#991B1B", boxstyle="round,pad=0.18", alpha=0.96))
+    if show_force_colours:
+        ax.text(0.02, 2.42, "Green: tension     Red: compression     Grey: zero force", fontsize=11, color="#475569")
+    ax.set_xlim(-0.60, 4.62)
+    ax.set_ylim(-1.05, 2.70)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    if title:
+        ax.set_title(title, fontsize=14, pad=8)
+    fig.tight_layout()
+    return fig
+
+def reference_diagram(mass=30):
+    figure=_reference_figure(float(mass))
+    output=io.BytesIO()
+    figure.savefig(output,format="png",dpi=160)
+    return output.getvalue()
+
+
+SECTION_GUIDANCE = (
+    ("Student details and practical pathway", "Enter the details from your JCU enrolment and select your practical pathway.", "Welcome to TrussLab", "A guided practical from setup to submission", "Follow the workflow and complete each section. Your 2027 entries and working photographs are saved together.", ("Analyse a pin-jointed truss", "Collect five member readings", "Show handwritten calculations", "Explain and report your results"), "enter your student details and select your practical pathway.", ("Save your full name, eight-digit student ID and practical group.", "Select the physical or simulated pathway confirmed by your lecturer.", "Add a short aim and procedure in the report-writing expander.")),
+    ("Pre-lab preparation and member predictions", "Inspect the supports, central load and instrumented members before recording your predictions.", "Prepare before testing", "Read the truss and explain your predictions", "Use joint equilibrium and the load path to support your initial reasoning.", ("Identify both supports", "Convert mass to force", "Classify five members", "Give two brief reasons"), "complete the responses and record your prediction attempt.", ("Identify the support at A and at C and calculate the weight of 10 kg.", "Predict tension, compression or zero force for each instrumented member.", "Explain your zero-force and AE predictions, then record the attempt.")),
+    ("Practical preparation and safety", "Prepare for the selected practical pathway and follow the demonstrator's instructions.", "Prepare to collect data", "Check the apparatus before applying a load", "Physical sessions require the laboratory safety acknowledgement before measurements can be recorded.", ("Receive the briefing", "Inspect the apparatus", "Follow the load limit", "Record the acknowledgement"), "complete the safety items for the physical pathway, or continue with the simulation.", ("Confirm your selected pathway in Student details.", "For a physical session, read and acknowledge every laboratory instruction.", "Follow the approved loading and emergency procedures.")),
+    ("Apparatus and data collection", "Collect signed proving-ring dial readings using your physical or simulated pathway.", "Collect evidence", "Build a complete measurement record", "Record the initial zero, the three loaded cases and the final unloaded reading for each member.", ("Record the initial offset", "Apply 10, 20 and 30 kg", "Record five dial readings", "Check unloaded drift"), "record all 25 readings before moving to the calculation sections.", ("Follow the physical loading procedure or capture each simulated measurement.", "Use signed readings in mm; a recorded zero is different from a blank cell.", "Record the initial and final unloaded readings so zero correction and drift can be considered.")),
+    ("Theoretical calculations", "Calculate reactions and selected member forces for the 30 kg load case.", "Apply equilibrium", "Solve the truss and show how you obtained each answer", "Use free-body diagrams, equations, units and a clear tension/compression interpretation.", ("Draw the whole truss", "Calculate support reactions", "Analyse joints A and B", "Upload H1 and H2 working"), "enter your final answers, upload your working and record the theoretical attempt.", ("Use g = 9.81 m/s² and show the external forces and support reactions.", "Justify the zero-force members and solve joints A and B.", "Upload legible H1 and H2 photographs and record your typed results.")),
+    ("Experimental calculations", "Convert selected ring-dial readings to force before viewing the calculated comparison.", "Work from your readings", "Connect the measurements to member forces", "Show the initial zero correction and calibration conversion, then compare AE with your own theoretical result.", ("Correct the initial offset", "Calculate AE and AB", "Calculate AE discrepancy", "Upload H3 working"), "record your experimental calculation attempt to unlock the results comparison.", ("Subtract the initial unloaded reading from the loaded dial reading.", "Convert AE and AB to force using the supplied calibration factors.", "Calculate AE's percentage discrepancy and upload the handwritten H3 working.")),
+    ("Results and explanations", "Interpret agreement, proportionality and data quality using your own measurements.", "Interpret the evidence", "Explain what your results show", "Use specific numerical comparisons and propose a check that could test your explanation.", ("Compare measured forces", "Inspect the load response", "Consider zero-force residuals", "Complete Q1, Q2 and Q3"), "complete the three short explanations using evidence from your tables and graph.", ("Review the calculated experimental values alongside your own theoretical answers.", "Use numbers to assess agreement and proportionality.", "Identify a data-quality limitation and propose a practical way to investigate it.")),
+    ("Safe-load engineering challenge", "Compare the tensile and compressive capacity limits and defend the governing case.", "Make an engineering decision", "Calculate the capacity before exploring the model", "Separate the theoretical limiting mass, a permitted 0.1 kg increment and the approved physical test mass.", ("Derive both mass limits", "Identify the governing member", "Upload H4 working", "Explain your decision in Q4"), "record the capacity calculation attempt, then use the model to review your decision.", ("Derive the tensile and compressive limiting masses from equilibrium and the given allowables.", "Choose the lower limit and an operating increment that does not exceed it.", "Upload H4 working, record the attempt and complete Q4.")),
+    ("Review and report submission", "Review the complete practical before generating the files for LearnJCU submission.", "Prepare your submission", "Bring your calculations and explanations together", "The generated report contains the answers, written responses and photographs recorded in the app.", ("Review all typed answers", "Check working photographs", "Complete the conclusion", "Download the submission files"), "resolve any missing items, review the declaration and generate the complete report.", ("Check that every required calculation, photograph and written response is present.", "Confirm that the typed results correspond to your uploaded working.", "Generate and review the PDF report, then submit the report and answer file as instructed.")),
+)
+
+
+def render_brand_header(root):
+    logo=root/"assets"/"jcu_logo.png"
+    logo_html=(f'<img src="data:image/png;base64,{base64.b64encode(logo.read_bytes()).decode()}" alt="James Cook University Australia">'
+               if logo.exists() else '<strong>JCU</strong>')
+    st.markdown(f'''<div class="app-header">
+      <div class="header-logo">{logo_html}</div>
+      <div class="app-header-title"><div class="kicker">EG1011 · Statics and Dynamics</div>
+        <h1>TrussLab</h1><p>Guided plane-truss testing, member-force analysis and structured report preparation for physical or online completion.</p></div>
+      <div class="app-header-meta"><div class="label">Practical</div><div class="title">Forces in a Plane Truss</div><span class="version">2027 practical</span></div>
+      </div><div class="app-divider"></div>''',unsafe_allow_html=True)
+
+
+def render_section_guidance(index):
+    title,summary,eyebrow,headline,description,items,next_action,steps=SECTION_GUIDANCE[index]
+    heading_col,help_col=st.columns([.86,.14],gap="small")
+    with heading_col:
+        st.markdown(f'<div class="page-heading"><div class="section-label">Section {index+1}</div><div class="section-title">{escape(title)}</div><div class="section-summary">{escape(summary)}</div></div>',unsafe_allow_html=True)
+    with help_col:
+        with st.popover("❓ Help"):
+            st.markdown("#### What to do")
+            for number,step in enumerate(steps,1):st.markdown(f"**{number}.** {step}")
+            st.markdown('<div class="help-completion"><b>Before moving on</b><br>'+escape(next_action[0].upper()+next_action[1:])+'</div>',unsafe_allow_html=True)
+    if index==0:
+        item_html="".join(f'<div class="welcome-item"><span class="check">✓</span><span>{escape(item)}</span></div>' for item in items)
+        st.markdown(f'<div class="welcome-dashboard"><div><div class="eyebrow">{escape(eyebrow)}</div><div class="title">{escape(headline)}</div><div class="text">{escape(description)}</div></div><div class="welcome-list">{item_html}<div class="welcome-time">✎ Handwritten working · Four short explanations</div></div></div><div class="welcome-next-step"><b>Start here:</b> {escape(next_action)}</div>',unsafe_allow_html=True)
+    else:
+        item_html="".join(f'<div class="dashboard-item"><span class="check">✓</span><span>{escape(item)}</span></div>' for item in items)
+        st.markdown(f'<div class="section-dashboard"><div><div class="eyebrow">{escape(eyebrow)}</div><div class="title">{escape(headline)}</div><div class="description">{escape(description)}</div></div><div class="dashboard-list">{item_html}<div class="dashboard-meta"><span class="meta-pill">2027 practical</span><span class="meta-pill">Step {index+1} of 9</span></div></div></div><div class="section-next-action"><b>Next:</b> {escape(next_action)}</div>',unsafe_allow_html=True)
+
+
+def stage_completion(current):
+    return [core.identity_complete(current),core.recorded(current,"predictions"),core.safety_complete(current),core.readings_complete(current),
+            core.recorded(current,"theory"),core.recorded(current,"experimental"),all(current["explanations"][key].strip() for key in ("Q1","Q2","Q3")),
+            core.recorded(current,"capacity") and bool(current["explanations"]["Q4"].strip()),not core.validation_issues(current)]
 
 
 def initialise(root):
@@ -135,9 +1516,9 @@ def record_button(scope,complete,label):
 
 def page_details(root):
     m=model();s=m["student"]
-    left,right=st.columns([1.25,1])
+    left,right=st.columns([2.2,1],gap="large")
     with left:
-        st.subheader("Your details and practical pathway")
+        st.markdown('<div class="student-form-intro"><div class="title">Your details</div><div class="text">Enter the details from your JCU enrolment.</div></div>',unsafe_allow_html=True)
         with st.form("_tl27_details"):
             name=st.text_input("Full name",value=s["name"],max_chars=120)
             sid=st.text_input("JCU student ID (8 digits)",value=s["id"],max_chars=8)
@@ -160,12 +1541,23 @@ def page_details(root):
                         clear_widgets()
                     model()["student"]={"name":name.strip(),"id":sid.strip(),"group":group.strip(),"mode":mode}
                     st.success("Student details saved. Continue to Section 2.")
-        text("explanations","aim","Aim: what will you investigate?",height=90,help="Two or three sentences are sufficient.")
-        text("explanations","method","Procedure: summarise what you actually did",height=110,help="Describe the selected physical or simulated pathway and how the readings were obtained.")
+        selected=model()["student"]["mode"]
+        if selected:
+            st.markdown(f'<div class="mode-summary"><b>{escape(selected)}</b><br>'+('Attend the scheduled session, complete the safety acknowledgement and enter the apparatus readings.' if selected==core.PHYSICAL else 'The app creates reproducible 2027 simulated readings from your official JCU student ID.')+'</div>',unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="mode-summary"><b>Select a pathway</b><br>Choose the option confirmed by your lecturer or demonstrator before continuing.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="submission-summary"><b>What you submit</b><br>Your completed report includes recorded measurements, typed numerical answers, handwritten calculation photographs and short explanations. Review the generated PDF and submit through LearnJCU as instructed.</div>',unsafe_allow_html=True)
+        with st.expander("Aim and procedure for your report"):
+            text("explanations","aim","Aim: what will you investigate?",height=90,help="Two or three sentences are sufficient.")
+            text("explanations","method","Procedure: summarise what you actually did",height=110,help="Describe the selected physical or simulated pathway and how the readings were obtained.")
     with right:
-        st.image(diagram_png(),caption="Pin at A · roller at C · load at B · 45-degree diagonals",width="stretch")
-        st.markdown("**What you will submit**\n\nA complete report containing your measurements, typed answers, four sets of handwritten working and short explanations based on your results.")
-        st.info("Write calculations on paper or with a digital pen. Include diagrams, equations, substitutions, units and the meaning of each sign. Follow the subject instructions on permitted assistance.")
+        with st.container(border=True):
+            st.markdown('<div class="apparatus-soft-note">Identify the supports, central load and five instrumented members.</div><div class="apparatus-topline"><div><div class="apparatus-title">Plane-truss apparatus</div><div class="apparatus-caption">A central load is applied at joint B while five proving-ring members provide signed dial readings.</div></div><div class="apparatus-badges"><span class="apparatus-badge">Pin at A</span><span class="apparatus-badge">Roller at C</span><span class="apparatus-badge">5 gauges</span></div></div>',unsafe_allow_html=True)
+            st.image(reference_diagram(),width="stretch")
+            st.markdown('<div class="apparatus-legend"><span><span class="legend-dot" style="background:#A62C63"></span>Instrumented member</span><span><span class="legend-dot" style="background:#C62828"></span>Applied load</span><span><span class="legend-dot" style="background:#334155"></span>Truss member</span></div>',unsafe_allow_html=True)
+            with st.expander("Apparatus details and practical workflow"):
+                st.write("Loads of 10, 20 and 30 kg are applied at joint B. AF, FE, AE, AB and EB contain the five proving-ring gauges. The two equal bays and diagonals at 45° define the calculation geometry.")
+                st.write("Complete predictions, collect measurements, show your handwritten working, explain the results and generate your complete report. Include diagrams, equations, substitutions, units and sign interpretations in the uploaded working.")
     with st.expander("Restore a downloaded 2027 progress backup"):
         backup=st.file_uploader("2027 progress JSON",type=["json"],key="_tl27_restore")
         if st.button("Restore progress",disabled=backup is None,key="_tl27_restore_button"):
@@ -201,7 +1593,7 @@ def page_predictions(root):
             def store_prediction(member=member,widget=widget):model()["prelab"]["predictions"][member]=st.session_state[widget]
             st.selectbox(f"Predicted state of {member}",core.STATES,index=None,key=widget,on_change=store_prediction)
     with right:
-        st.image(diagram_png(),width="stretch")
+        st.image(reference_diagram(),width="stretch")
         text("prelab","reason_zero","Identify a zero-force member and explain the joint rule that supports your prediction.")
         text("prelab","reason_ae","Explain your prediction for AE using the load path or joint equilibrium.")
     record_button("predictions",core.predictions_complete(model()),"Record pre-lab responses and predictions")
@@ -289,7 +1681,7 @@ def page_theory(root):
         for key,label in core.THEORY_LABELS.items():number("theory",key,label)
         st.caption("Type the final answers from your handwritten work. The app records the answers without marking them.")
     with right:
-        st.image(diagram_png(),width="stretch")
+        st.image(reference_diagram(),width="stretch")
         upload_working("H1")
         upload_working("H2")
     record_button("theory",core.theory_complete(model()),"Record theoretical calculation attempt")
@@ -491,30 +1883,45 @@ def staff_workspace(root):
 def main(root:Path):
     initialise(root)
     st.markdown(CSS,unsafe_allow_html=True)
-    left,right=st.columns([.18,1])
-    logo=root/"assets"/"jcu_logo.png"
-    if logo.exists():left.image(str(logo),width=140)
-    right.markdown('<div class="tl-kicker">EG1011 · STATICS AND DYNAMICS</div><div class="tl-header"><div><h1>TrussLab</h1><div class="tl-subtitle">Forces in a Plane Truss · calculations, evidence and engineering decisions</div></div><span class="tl-year">2027</span></div>',unsafe_allow_html=True)
-    staff=st.sidebar.toggle("Staff checking workspace",value=False,key="_tl27_staff_workspace")
+    render_brand_header(root)
+    m=model()
+    completed=stage_completion(m)
+    st.sidebar.markdown('<div class="sidebar-brand"><div class="title">TrussLab</div><div class="course">EG1011 · Statics and Dynamics</div></div>',unsafe_allow_html=True)
+    progress_head_slot=st.sidebar.empty()
+    progress_slot=st.sidebar.empty()
+    progress_meta_slot=st.sidebar.empty()
+    st.sidebar.markdown('<div class="sidebar-workflow-title">Practical workflow</div>',unsafe_allow_html=True)
+    short_names=("Student details","Pre-lab & predictions","Safety","Data collection","Calculations","Experimental forces","Analysis","Challenge","Submission")
+    current_page=st.session_state.get("_tl27_navigation",SECTIONS[0])
+    def timeline_label(item):
+        index=SECTIONS.index(item)
+        marker="●" if item==current_page else "✅" if completed[index] else "○"
+        return f"{marker}  {short_names[index]}"
+    section=st.sidebar.radio("Section",SECTIONS,key="_tl27_navigation",label_visibility="collapsed",format_func=timeline_label)
+    if m["student"]["mode"]:
+        st.sidebar.markdown('<div class="sidebar-pathway">Current pathway<strong>'+escape(m["student"]["mode"])+"</strong></div>",unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown('<div class="sidebar-pathway-alert"><span class="alert-icon">⚠</span><span><strong>Pathway not selected</strong><small>Choose a practical pathway to continue.</small></span></div>',unsafe_allow_html=True)
+    save_slot=st.sidebar.empty()
+    st.sidebar.markdown('<div class="sidebar-summary-card"><div class="sidebar-summary-title">Practical summary</div><div class="sidebar-summary-row"><span class="icon">✎</span><span><b>Evidence</b><br>Four handwritten working tasks</span></div><div class="sidebar-summary-row"><span class="icon">📄</span><span><b>Report</b><br>Complete PDF and Word report</span></div><div class="sidebar-summary-row"><span class="icon">📊</span><span><b>Dataset</b><br>Physical or simulated readings</span></div><div class="sidebar-summary-row"><span class="icon">🎯</span><span><b>Objective</b><br>Member-force analysis</span></div></div>',unsafe_allow_html=True)
+    backup_slot=st.sidebar.empty()
+    with st.sidebar.expander("Progress and backups"):
+        st.caption("Keep your private resume URL and a downloaded backup. Server storage can be cleared when the app restarts. Restore a backup in Student details when changing devices.")
+    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
+    with st.sidebar.expander("Staff tools"):
+        staff=st.toggle("Staff checking workspace",value=False,key="_tl27_staff_workspace")
     if staff:
         staff_workspace(root)
         return
-    m=model()
-    st.sidebar.markdown("**Practical workflow**")
-    progress_slot=st.sidebar.empty()
-    section=st.sidebar.radio("Section",SECTIONS,key="_tl27_navigation",label_visibility="collapsed")
-    st.sidebar.caption("Your calculations are recorded before the corresponding calculated comparisons are displayed.")
-    backup_slot=st.sidebar.empty()
-    st.sidebar.caption("Progress is saved separately for 2027. Keep your private resume URL and a downloaded backup; server storage can be cleared when the app restarts. Use the backup for another device.")
-    st.subheader(section)
+    render_section_guidance(SECTIONS.index(section))
     pages=(page_details,page_predictions,page_safety,page_data,page_theory,page_experimental,page_results,page_capacity,page_submission)
     try:pages[SECTIONS.index(section)](root)
     finally:
         current=model()
-        completed=[core.identity_complete(current),core.recorded(current,"predictions"),core.safety_complete(current),core.readings_complete(current),
-                   core.recorded(current,"theory"),core.recorded(current,"experimental"),all(current["explanations"][k].strip() for k in ("Q1","Q2","Q3")),
-                   core.recorded(current,"capacity") and bool(current["explanations"]["Q4"].strip()),not core.validation_issues(current)]
-        progress_slot.progress(sum(completed)/len(completed),text=f"{sum(completed)} of {len(completed)} stages complete")
+        completed=stage_completion(current)
+        progress_head_slot.markdown(f'<div class="sidebar-progress-head"><div>Progress</div><span>{round(sum(completed)/len(completed)*100)}%</span></div>',unsafe_allow_html=True)
+        progress_slot.progress(sum(completed)/len(completed))
+        progress_meta_slot.markdown(f'<div class="sidebar-progress-meta">Stage {SECTIONS.index(section)+1} of 9 · {sum(completed)} complete</div>',unsafe_allow_html=True)
         with backup_slot.container():
             st.download_button("Download progress backup",core.progress_bytes(current),file_name=f"TrussLab_2027_{current['student']['id'] or 'progress'}_backup.json",mime="application/json",on_click="ignore",key="_tl27_backup")
         try:
@@ -522,6 +1929,6 @@ def main(root:Path):
             if st.session_state.get("_tl27_last_saved")!=fingerprint:
                 core.save_progress(root,st.session_state["_tl27_token"],model())
                 st.session_state["_tl27_last_saved"]=fingerprint
-            st.sidebar.caption("Progress saved for this private resume URL.")
+            save_slot.markdown('<div class="sidebar-status-inline good"><span class="dot"></span><span>Progress automatically saved</span></div>',unsafe_allow_html=True)
         except Exception:
-            st.sidebar.warning("Server save unavailable. Download a progress backup before leaving.")
+            save_slot.markdown('<div class="sidebar-status-inline warn"><span class="dot"></span><span>Download a progress backup before leaving.</span></div>',unsafe_allow_html=True)
