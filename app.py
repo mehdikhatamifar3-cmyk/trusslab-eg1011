@@ -1,6 +1,9 @@
 """TrussLab year selector. Run with: streamlit run app.py."""
 from pathlib import Path
+import hashlib
 import runpy
+import sys
+import types
 
 import streamlit as st
 
@@ -8,6 +11,24 @@ st.set_page_config(page_title="TrussLab | EG1011", page_icon="🔺", layout="wid
 
 ROOT = Path(__file__).resolve().parent
 YEARS = (2027, 2026)
+
+
+@st.cache_resource(show_spinner=False)
+def load_2027_version(source: bytes, script_path: str):
+    """Cache each source revision separately, never a stale imported module.
+
+    The resource cache serialises initialisation for concurrent sessions. All
+    student data remains in Streamlit session state and existing progress files.
+    """
+    version=hashlib.sha256(source).hexdigest()
+    location=hashlib.sha256(script_path.encode()).hexdigest()[:12]
+    name="_trusslab_2027_"+version+"_"+location
+    module=types.ModuleType(name)
+    module.__file__=script_path
+    module.__package__=""
+    exec(compile(source,script_path,"exec"),module.__dict__)
+    sys.modules[name]=module
+    return module
 
 
 def change_year():
@@ -39,5 +60,5 @@ st.sidebar.caption(f"You are using the {st.session_state['_tl_year']} practical.
 if st.session_state["_tl_year"] == 2026:
     runpy.run_path(str(ROOT / "app_2026.py"), run_name="__main__")
 else:
-    from app_2027 import main
-    main(ROOT)
+    script=ROOT/"app_2027.py"
+    load_2027_version(script.read_bytes(),str(script)).main(ROOT)
