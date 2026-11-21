@@ -10,12 +10,20 @@ import zipfile
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from trusslab_2027_core import (
-    CAPACITY_LABELS, EVIDENCE_TITLES, EXPERIMENTAL_LABELS, MEMBERS,
-    QUESTIONS, READING_KEYS, THEORY_LABELS, capacity, comparison_rows,
-    digest, evidence_bytes, now, parse_progress, progress_bytes, theory,
-    validation_issues,
-)
+if __package__:
+    from .trusslab_2027_core import (
+        CAPACITY_LABELS, EVIDENCE_TITLES, EXPERIMENTAL_LABELS, MEMBERS,
+        QUESTIONS, READING_KEYS, THEORY_LABELS, capacity, comparison_rows,
+        digest, evidence_bytes, now, parse_progress, progress_bytes, theory,
+        validation_issues,
+    )
+else:
+    from trusslab_2027_core import (
+        CAPACITY_LABELS, EVIDENCE_TITLES, EXPERIMENTAL_LABELS, MEMBERS,
+        QUESTIONS, READING_KEYS, THEORY_LABELS, capacity, comparison_rows,
+        digest, evidence_bytes, now, parse_progress, progress_bytes, theory,
+        validation_issues,
+    )
 
 SHORT_QUESTIONS = {
     "Q1": "Agreement with theory", "Q2": "Proportionality with load",
