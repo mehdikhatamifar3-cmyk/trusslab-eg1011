@@ -23,6 +23,11 @@ from zoneinfo import ZoneInfo
 
 YEAR = 2027
 SCHEMA = "trusslab-2027-v1"
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_PIXELS = 30_000_000
+MAX_STORED_IMAGE_BYTES = 2 * 1024 * 1024
+IMAGE_BOUNDS = (2000, 2600)
+LOW_RESOLUTION_EDGE = 1200
 MEMBERS = ("AF", "FE", "AE", "AB", "EB")
 ALL_MEMBERS = ("AF", "FE", "ED", "DC", "AB", "BC", "AE", "EC", "EB")
 LOADS = (10, 20, 30)
@@ -193,23 +198,47 @@ def comparison_rows(model):
 
 
 def normalise_image(raw: bytes, filename: str):
-    from PIL import Image, ImageOps
-    if len(raw) > 10 * 1024 * 1024:
-        raise ValueError("Each photograph must be no larger than 10 MB")
-    with Image.open(io.BytesIO(raw)) as original:
-        if original.width * original.height > 30_000_000:
-            raise ValueError("Photograph is too large; resize it below 30 megapixels")
-        image = ImageOps.exif_transpose(original)
-        if image.mode in ("RGBA", "LA"):
-            rgba = image.convert("RGBA")
-            background = Image.new("RGBA", rgba.size, "white")
-            image = Image.alpha_composite(background, rgba).convert("RGB")
-        else:
-            image = image.convert("RGB")
-        image.thumbnail((2000, 2600))
-        output = io.BytesIO()
-        image.save(output, format="JPEG", quality=90, optimize=True)
-    data = output.getvalue()
+    """Validate a photo, correct orientation and save a bounded, portable copy.
+
+    Small sources are not resampled upward: report sizing cannot recover detail.
+    The stored byte cap also keeps all twelve allowed photographs within the
+    existing 40 MB progress-file limit, including their base64 representation.
+    """
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    if not raw:
+        raise ValueError("The image is empty; choose a JPG or PNG photograph")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise ValueError("Each photograph must be no larger than 10 MB; resize or compress it and try again")
+    try:
+        with Image.open(io.BytesIO(raw)) as original:
+            if original.format not in ("JPEG", "PNG"):
+                raise ValueError("Use a JPG, JPEG or PNG image; export HEIC, PDF or other formats as JPG/PNG first")
+            if original.width * original.height > MAX_IMAGE_PIXELS:
+                raise ValueError("Photograph exceeds 30 megapixels; resize it and upload the smaller copy")
+            image = ImageOps.exif_transpose(original)
+            if "A" in image.getbands() or "transparency" in image.info:
+                rgba = image.convert("RGBA")
+                background = Image.new("RGBA", rgba.size, "white")
+                image = Image.alpha_composite(background, rgba).convert("RGB")
+            else:
+                image = image.convert("RGB")
+            image.thumbnail(IMAGE_BOUNDS, Image.Resampling.LANCZOS)
+            def encode(quality):
+                output = io.BytesIO()
+                image.save(output, format="JPEG", quality=quality, optimize=True)
+                return output.getvalue()
+            # Handwritten pages normally fit at quality 90. Noisy photographs
+            # may need more compression or a smaller copy for reliable backups.
+            for quality in (90, 85, 80, 75):
+                data = encode(quality)
+                if len(data) <= MAX_STORED_IMAGE_BYTES:
+                    break
+            while len(data) > MAX_STORED_IMAGE_BYTES:
+                image = image.resize((max(1, round(image.width * .85)),
+                                      max(1, round(image.height * .85))), Image.Resampling.LANCZOS)
+                data = encode(80)
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise ValueError("This image cannot be read safely; export a fresh JPG/PNG or take a new photograph") from exc
     return {"name": Path(filename).name[:120], "data": base64.b64encode(data).decode(),
             "sha256": hashlib.sha256(data).hexdigest()}
 
@@ -219,6 +248,13 @@ def evidence_bytes(item):
     if hashlib.sha256(raw).hexdigest() != item["sha256"]:
         raise ValueError("A working photograph has changed; upload it again")
     return raw
+
+
+def image_dimensions(item):
+    """Read the saved photo's dimensions, including photographs in old backups."""
+    from PIL import Image
+    with Image.open(io.BytesIO(evidence_bytes(item))) as image:
+        return image.size
 
 
 def attempt_signature(model, scope):
