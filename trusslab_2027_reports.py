@@ -21,6 +21,17 @@ SHORT_QUESTIONS = {
     "Q1": "Agreement with theory", "Q2": "Proportionality with load",
     "Q3": "Data quality and a proposed check", "Q4": "Governing capacity and operating limit",
 }
+REPORT_LAYOUT_VERSION = "2027.4"
+
+
+def fit_image_size(width, height, max_width, max_height):
+    """Fit the entire image inside a rectangle without cropping or stretching.
+
+    All four arguments use the same units. Scaling is independent of camera DPI
+    metadata, so a portrait, landscape or small source stays inside the page.
+    """
+    scale = min(max_width / width, max_height / height)
+    return width * scale, height * scale
 
 
 def fmt(value, digits=2):
@@ -182,12 +193,17 @@ def build_pdf(model,root):
             self.caption=para(description,caption)
         def wrap(self,available_width,available_height):
             self.caption_width,self.caption_height=self.caption.wrap(available_width,100)
+            # Preserve a useful reading size. If the complete image and caption
+            # cannot fit, move both to the next page instead of shrinking them
+            # into the small space remaining below the answer table.
+            max_width=max(1,available_width)
+            _,preferred_height=fit_image_size(self.iw,self.ih,max_width,490)
+            minimum_height=min(preferred_height,280)
             maximum=min(490,available_height-self.caption_height-10)
-            if maximum<280:
-                self.width,self.height=available_width,510
+            if maximum<minimum_height:
+                self.width,self.height=available_width,max(0,available_height)+1
                 return self.width,self.height
-            scale=min(available_width/self.iw,maximum/self.ih)
-            self.image_width,self.image_height=self.iw*scale,self.ih*scale
+            self.image_width,self.image_height=fit_image_size(self.iw,self.ih,max_width,maximum)
             self.width,self.height=available_width,self.image_height+self.caption_height+10
             return self.width,self.height
         def draw(self):
@@ -227,8 +243,9 @@ def build_pdf(model,root):
                 story.append(WorkingImage(raw,description))
                 continue
             max_height=190
-            scale=min(width/w,max_height/h)
-            im=Image(io.BytesIO(raw),width=w*scale,height=h*scale)
+            image_width,image_height=fit_image_size(w,h,width-12,max_height)
+            im=Image(io.BytesIO(raw),width=image_width,height=image_height)
+            im.hAlign="CENTER"
             story.append(KeepTogether([im,para(description,caption)]))
     ref=model.get("submission",{}).get("id","")[:12]
     def footer(canvas,doc):
@@ -241,6 +258,7 @@ def build_pdf(model,root):
 
 def build_docx(model,root):
     from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches,Pt,RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
@@ -290,11 +308,22 @@ def build_docx(model,root):
         elif kind=="image":
             raw,description=value
             with Image.open(io.BytesIO(raw)) as im: w,h=im.size
-            max_height=(5.2 if description.startswith("H1") else 5.8 if description.startswith("H3") else 4.7 if description.startswith("H4") else 6.7) if description.startswith("H") else 2.65
-            scale=min(7.1/w,max_height/h)
-            p=document.add_paragraph();p.paragraph_format.keep_with_next=True
-            p.add_run().add_picture(io.BytesIO(raw),width=Inches(w*scale))
-            cap=document.add_paragraph(description);cap.paragraph_format.space_after=Pt(9)
+            available_width=(section.page_width-section.left_margin-section.right_margin)/914400
+            available_height=(section.page_height-section.top_margin-section.bottom_margin)/914400
+            # Leave room for the typed results above each working task. Word
+            # keeps each image with its caption and moves the pair when needed.
+            task_height=(5.2 if description.startswith("H1") else 5.8 if description.startswith("H3") else 4.7 if description.startswith("H4") else 6.7) if description.startswith("H") else 2.65
+            max_height=min(task_height,available_height-.65)
+            image_width,image_height=fit_image_size(w,h,min(7.1,available_width),max_height)
+            p=document.add_paragraph();p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.keep_with_next=True
+            p.paragraph_format.keep_together=True
+            p.paragraph_format.line_spacing=1
+            p.paragraph_format.space_after=Pt(3)
+            p.add_run().add_picture(io.BytesIO(raw),width=Inches(image_width),height=Inches(image_height))
+            cap=document.add_paragraph(description);cap.alignment=WD_ALIGN_PARAGRAPH.CENTER
+            cap.paragraph_format.keep_together=True
+            cap.paragraph_format.space_after=Pt(9)
             for run in cap.runs:run.font.size=Pt(8)
     footer=section.footer.paragraphs[0]
     footer.text=f"EG1011 | TrussLab 2027 | {model.get('submission',{}).get('id','')[:12]} | Page "
