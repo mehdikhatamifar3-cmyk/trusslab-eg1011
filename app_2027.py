@@ -19,8 +19,20 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-import trusslab_2027_core as core
-from trusslab_2027_reports import REPORT_LAYOUT_VERSION, build_bundle, diagram_png, read_bundle, readings_plot_png
+if __package__:
+    from . import trusslab_2027_core as core
+    from . import trusslab_2027_reports as reports
+else:
+    import trusslab_2027_core as core
+    import trusslab_2027_reports as reports
+
+# This metadata must not prevent startup when this module is imported directly
+# by an older entry point. The normal entry point loads a matching private set.
+REPORT_LAYOUT_VERSION=getattr(reports,"REPORT_LAYOUT_VERSION","2027.4")
+build_bundle=reports.build_bundle
+diagram_png=reports.diagram_png
+read_bundle=reports.read_bundle
+readings_plot_png=reports.readings_plot_png
 
 SECTIONS = (
     "1 Student details", "2 Pre-lab and predictions", "3 Safety",
@@ -2300,7 +2312,7 @@ def main(root:Path):
     backup_slot=st.sidebar.empty()
     with st.sidebar.expander("Progress and backups"):
         st.caption("Work is saved on this browser by student ID and separately on the app server using your private resume URL. Keep a downloaded backup for another device or if browser storage is cleared.")
-    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027.4</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027.5</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
     with st.sidebar.expander("Staff tools"):
         staff=st.toggle("Staff checking workspace",value=False,key="_tl27_staff_workspace")
     if staff:
