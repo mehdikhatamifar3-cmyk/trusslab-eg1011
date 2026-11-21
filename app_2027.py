@@ -6,6 +6,7 @@ import base64
 from html import escape
 import hashlib
 import hmac
+import inspect
 import io
 import json
 import os
@@ -19,7 +20,7 @@ import pandas as pd
 import streamlit as st
 
 import trusslab_2027_core as core
-from trusslab_2027_reports import build_bundle, diagram_png, read_bundle, readings_plot_png
+from trusslab_2027_reports import REPORT_LAYOUT_VERSION, build_bundle, diagram_png, read_bundle, readings_plot_png
 
 SECTIONS = (
     "1 Student details", "2 Pre-lab and predictions", "3 Safety",
@@ -1824,25 +1825,51 @@ def checkbox(section,key,label):
 
 def upload_working(key):
     st.markdown(f"**{key} · {core.EVIDENCE_TITLES[key]}**")
+    st.caption("JPG/JPEG or PNG · up to 3 images per task · maximum 10 MB and 30 megapixels per image.")
+    with st.expander("Image upload instructions"):
+        st.markdown("""
+- Photograph one sheet at a time, in the order you want it to appear. Use up to three images for each H task.
+- Crop out the desk and empty borders, while keeping every equation, unit and diagram. Use dark writing, even lighting and a steady camera held directly above the page.
+- For a full handwritten page, aim for at least **1500 pixels on the long edge**. Check that small subscripts and numbers are readable before uploading.
+- Upload **JPG/JPEG or PNG**, at most **10 MB and 30 megapixels per image**. Export HEIC or PDF files as JPG/PNG first. Resize or compress files above these limits.
+- The app corrects phone orientation when rotation information is present, reduces large accepted photos and compresses the saved copy. Transparent backgrounds become white.
+- In the PDF and Word reports, each photo is **centred and fitted inside the page margins**, with its proportions preserved and no automatic cropping. It moves to the next page when needed, together with its caption.
+- A small image may trigger a warning. Enlarging it cannot restore missing detail: retake a blurry photo or use two or three closer photographs of the working.
+- Open the saved-photo preview, then check the generated report at **100% zoom** before submitting. Check the processed copy as well as the original.
+""")
     generation=st.session_state.get(f"_tl27_upload_generation_{key}",0)
     widget=f"_tl27_upload_{key}_{generation}"
+    # Keep compatibility with Streamlit 1.50 while using its per-widget limit
+    # on newer installations. Core validation enforces 10 MB on every version.
+    upload_options={"max_upload_size":10} if "max_upload_size" in inspect.signature(st.file_uploader).parameters else {}
     uploads=st.file_uploader("Add or replace working photographs",type=["jpg","jpeg","png"],accept_multiple_files=True,
-                             key=widget,help="Use up to three clear photographs per task. Each file may be up to 10 MB. Crop to the page and keep equations readable.")
+                             key=widget,help="Up to three JPG/PNG images per task, at most 10 MB and 30 megapixels each. Photos are centred and fitted in the report without cropping. Check the saved preview for readable handwriting.",**upload_options)
     if uploads:
         try:
             if len(uploads)>3:raise ValueError("Use at most three photographs per task")
             upload_hash=core.digest([hashlib.sha256(f.getvalue()).hexdigest() for f in uploads])
             cache=f"_tl27_uploaded_hash_{key}"
             if st.session_state.get(cache)!=upload_hash:
-                converted=[core.normalise_image(f.getvalue(),f.name) for f in uploads]
+                converted=[]
+                for file in uploads:
+                    try:converted.append(core.normalise_image(file.getvalue(),file.name))
+                    except ValueError as exc:raise ValueError(f"{file.name}: {exc}") from exc
                 model()["evidence"][key]=converted
                 st.session_state[cache]=upload_hash
         except Exception as exc:
             st.error(f"Photographs were not replaced: {exc}")
     if model()["evidence"][key]:
         st.caption(f"{len(model()['evidence'][key])} photograph(s) saved with this practical.")
+        for item in model()["evidence"][key]:
+            width,height=core.image_dimensions(item)
+            if max(width,height)<core.LOW_RESOLUTION_EDGE:
+                st.warning(f"{item['name']}: low resolution ({width} × {height} pixels). The photo is saved, but it may look blurry when enlarged in the report. Retake it at a higher resolution if any handwriting is unclear.")
+            if max(width,height)>3.5*min(width,height):
+                st.warning(f"{item['name']}: unusually tall or wide image ({width} × {height} pixels). It will shrink to fit the report page. Check readability; crop unused borders or split long working across up to three photographs.")
         with st.expander(f"Review saved {key} photographs"):
-            for item in model()["evidence"][key]:st.image(core.evidence_bytes(item),caption=item["name"],width="stretch")
+            for item in model()["evidence"][key]:
+                width,height=core.image_dimensions(item)
+                st.image(core.evidence_bytes(item),caption=f"{item['name']} · saved copy {width} × {height} pixels",width="stretch")
         if st.button(f"Remove saved {key} photographs",key=f"_tl27_remove_{key}"):
             model()["evidence"][key]=[]
             st.session_state.pop(f"_tl27_uploaded_hash_{key}",None)
@@ -2122,10 +2149,10 @@ def page_submission(root):
         try:
             with st.spinner("Building the report with your working photographs…"):
                 st.session_state["_tl27_bundle"]=build_bundle(m,root)
-                st.session_state["_tl27_bundle_signature"]=core.digest(m)
+                st.session_state["_tl27_bundle_signature"]=core.digest({"model":m,"report_layout":REPORT_LAYOUT_VERSION})
         except Exception as exc:st.error(f"Report generation failed: {exc}")
     bundle=st.session_state.get("_tl27_bundle")
-    if bundle and st.session_state.get("_tl27_bundle_signature")==core.digest(m):
+    if bundle and st.session_state.get("_tl27_bundle_signature")==core.digest({"model":m,"report_layout":REPORT_LAYOUT_VERSION}):
         st.download_button("Download submission ZIP",bundle["zip"],file_name=bundle["stem"]+"_submission.zip",mime="application/zip",type="primary",key="_tl27_zip",on_click="ignore")
         cols=st.columns(3)
         for col,kind,label,mime in ((cols[0],"pdf","PDF report","application/pdf"),(cols[1],"docx","Word report","application/vnd.openxmlformats-officedocument.wordprocessingml.document"),(cols[2],"json","Answer file","application/json")):
@@ -2273,7 +2300,7 @@ def main(root:Path):
     backup_slot=st.sidebar.empty()
     with st.sidebar.expander("Progress and backups"):
         st.caption("Work is saved on this browser by student ID and separately on the app server using your private resume URL. Keep a downloaded backup for another device or if browser storage is cleared.")
-    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027.3</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027.4</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
     with st.sidebar.expander("Staff tools"):
         staff=st.toggle("Staff checking workspace",value=False,key="_tl27_staff_workspace")
     if staff:
