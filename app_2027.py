@@ -9,6 +9,10 @@ import hmac
 import io
 import json
 import os
+import re
+import time
+import tempfile
+import textwrap
 from pathlib import Path
 
 import pandas as pd
@@ -23,8 +27,8 @@ SECTIONS = (
     "7 Results and explanations", "8 Capacity challenge", "9 Review and submission",
 )
 CSS = """
+<style>
 
-    <style>
       :root { --jcu-blue:#A62C63; --jcu-blue-dark:#7D1F49; --ink:#29202A; --muted:#70616C; --line:#ECDCE3; }
       html { scroll-behavior:smooth; }
       .stApp { background:#ffffff; color:var(--ink); }
@@ -287,10 +291,8 @@ CSS = """
         .header-logo img { max-width:235px; }
         .app-header-meta { border-left:0; border-top:1px solid #EEE0E6; padding:13px 0 0; text-align:center; }
       }
-    </style>
     
 
-    <style>
       :root {
         --jcu-blue:#A62C63;
         --jcu-blue-dark:#7D1F49;
@@ -423,10 +425,8 @@ CSS = """
       @media (max-width:980px) {
         [data-testid="stSidebar"] { min-width:220px; max-width:232px; }
       }
-    </style>
     
 
-    <style>
       /* Reduce header-logo dominance while preserving JCU identity. */
       .header-logo img { max-width:176px !important; }
       .header-logo { min-height:68px; padding-right:20px; }
@@ -573,10 +573,8 @@ CSS = """
         .welcome-time { grid-column:auto; }
         .header-logo img { max-width:190px !important; }
       }
-    </style>
     
 
-    <style>
       /* Keep the product name visually dominant over the institutional mark. */
       .app-header {
         grid-template-columns:185px minmax(0,1fr) 220px;
@@ -672,10 +670,8 @@ CSS = """
           padding:12px 0 0;
         }
       }
-    </style>
     
 
-    <style>
       /* Keep TrussLab as the primary visual anchor; the JCU mark is supporting identity. */
       .app-header {
         grid-template-columns:155px minmax(0,1fr) 205px;
@@ -765,10 +761,8 @@ CSS = """
       @media (max-width:980px) {
         .header-logo img { max-width:126px !important; }
       }
-    </style>
     
 
-    <style>
       /* Slightly more compact apparatus reference card. */
       div[data-testid="stVerticalBlockBorderWrapper"] {
         padding:0.68rem 0.76rem 0.72rem !important;
@@ -825,10 +819,8 @@ CSS = """
       @media (max-width:760px) {
         .welcome-next-step { margin-top:-6px; }
       }
-    </style>
     
 
-    <style>
       /* Reusable section dashboard: the same visual language as the first page. */
       .section-dashboard {
         display:grid;
@@ -1066,10 +1058,8 @@ CSS = """
         .section-dashboard .dashboard-list,
         .checklist-grid { grid-template-columns:1fr; }
       }
-    </style>
     
 
-    <style>
       :root {
         color-scheme: light !important;
         --trusslab-ink: #29202A;
@@ -1232,9 +1222,8 @@ CSS = """
           forced-color-adjust: auto;
         }
       }
-    </style>
     
-<style>
+
 /* 2027 uses the 2026 interface with a dark pink accent. */
 :root { --primary-color:#A62C63; --jcu-blue:#A62C63; --jcu-blue-dark:#7D1F49; --secondary:#C34C83; --trusslab-ink:#29202A; --trusslab-muted:#625360; }
 [data-testid="stForm"] { border:0 !important; padding:0 !important; background:transparent !important; }
@@ -1256,8 +1245,61 @@ CSS = """
 .apparatus-panel-intro { margin-bottom:7px; }
 [data-testid="stSidebar"] [data-testid="stExpander"] summary { font-size:11px; }
 @media (max-width:720px) { .app-header-title h1 {font-size:30px;} .page-heading .section-title {font-size:22px;} }
-</style>
 
+/* Final readability rules apply in light/dark Streamlit and OS themes. */
+:root { color-scheme:light !important; --trusslab-ink:#29202A; --trusslab-muted:#625360; }
+html,body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stSidebar"],
+[data-testid="stSidebarContent"],[data-testid="stPopoverBody"],[data-testid="stDialog"] { background-color:#FFFFFF !important; color:#29202A !important; }
+[data-testid="stAppViewContainer"] input:not([type="checkbox"]):not([type="radio"]),
+[data-testid="stAppViewContainer"] textarea,[data-testid="stAppViewContainer"] select,
+[data-testid="stAppViewContainer"] [data-baseweb="input"],
+[data-testid="stAppViewContainer"] [data-baseweb="base-input"],
+[data-testid="stAppViewContainer"] [data-baseweb="select"] > div,
+[data-testid="stAppViewContainer"] [data-baseweb="textarea"] {
+ background-color:#FFFFFF !important; color:#29202A !important; -webkit-text-fill-color:#29202A !important; caret-color:#A62C63 !important; color-scheme:light !important;
+}
+[data-baseweb="popover"],[data-baseweb="menu"],[role="listbox"],[role="option"],
+[data-testid="stTooltipContent"],[data-testid="stPopoverBody"] { background-color:#FFFFFF !important; color:#29202A !important; }
+[role="option"] *,[data-testid="stPopoverBody"] p,[data-testid="stTooltipContent"] * { color:#29202A !important; -webkit-text-fill-color:#29202A !important; }
+[data-testid="stAppViewContainer"] button[kind="secondary"],
+[data-testid="stAppViewContainer"] [data-testid="stBaseButton-secondary"],
+[data-testid="stAppViewContainer"] button[kind="secondary"] *,
+[data-testid="stAppViewContainer"] [data-testid="stBaseButton-secondary"] * {
+ background-color:#FFFFFF !important; color:#492C3B !important; -webkit-text-fill-color:#492C3B !important;
+}
+[data-testid="stAppViewContainer"] button[kind="primary"],
+[data-testid="stAppViewContainer"] [data-testid="stBaseButton-primary"] {
+ background-color:#A62C63 !important; border-color:#A62C63 !important;
+}
+[data-testid="stAppViewContainer"] button[kind="primary"] *,
+[data-testid="stAppViewContainer"] [data-testid="stBaseButton-primary"] *,
+[data-testid="stAppViewContainer"] button[kind="primary"],
+[data-testid="stAppViewContainer"] [data-testid="stBaseButton-primary"] {
+ color:#FFFFFF !important; -webkit-text-fill-color:#FFFFFF !important;
+}
+[data-testid="stAppViewContainer"] button:disabled,
+[data-testid="stAppViewContainer"] button:disabled * {
+ background-color:#EEE7EC !important; border-color:#D7CAD2 !important; color:#65535F !important; -webkit-text-fill-color:#65535F !important; opacity:1 !important;
+}
+.sidebar-progress-meta,.sidebar-footer,.sidebar-footer *,.sidebar-summary-row,
+.welcome-dashboard .text,.welcome-item,.welcome-time,.apparatus-caption,
+.panel-subheading,.page-heading .section-summary,.section-dashboard .description {
+ color:#625360 !important; -webkit-text-fill-color:#625360 !important;
+}
+[data-testid="stRadio"] label > div:first-child { display:flex !important; opacity:1 !important; }
+[data-testid="stCheckbox"] label > span:first-child { display:inline-flex !important; opacity:1 !important; }
+input::placeholder,textarea::placeholder { color:#70616C !important; -webkit-text-fill-color:#70616C !important; opacity:1 !important; }
+@media (prefers-color-scheme:dark) {
+ html,body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stSidebar"] { background-color:#FFFFFF !important; color:#29202A !important; }
+}
+@media (forced-colors:active) {
+ [data-testid="stAppViewContainer"] button,[data-testid="stAppViewContainer"] button *,
+ [data-testid="stAppViewContainer"] input,[data-testid="stAppViewContainer"] textarea {
+ forced-color-adjust:auto !important; color:CanvasText !important; -webkit-text-fill-color:CanvasText !important; background:Canvas !important; border-color:ButtonText !important;
+ }
+}
+
+</style>
 """
 
 
@@ -1416,26 +1458,339 @@ def stage_completion(current):
             core.recorded(current,"capacity") and bool(current["explanations"]["Q4"].strip()),not core.validation_issues(current)]
 
 
+LOCAL_PROGRESS_HTML = r'''<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;height:0;overflow:hidden"><script>
+// Runs locally in the component iframe. No external scripts or services.
+(() => {
+  const DB = "TrussLab2027LocalProgress", STORE = "progress";
+  const draftPrefix = "TrussLab2027:pending:";
+  let database, active, lastReply = "", chain = Promise.resolve(), parentDocument;
+  function message(type, extra = {}) {
+    window.parent.postMessage({isStreamlitMessage:true, type, ...extra}, "*");
+  }
+  function reply(value) {
+    const key = JSON.stringify(value);
+    if (key !== lastReply) {
+      lastReply = key;
+      message("streamlit:setComponentValue", {value, dataType:"json"});
+    }
+  }
+  function db() {
+    if (!database) database = new Promise((resolve,reject) => {
+      const request = indexedDB.open(DB, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore(STORE, {keyPath:"key"});
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || Error("Local storage unavailable"));
+      request.onblocked = () => reject(Error("Local storage is blocked"));
+    });
+    return database;
+  }
+  async function read(key) {
+    const database = await db();
+    return new Promise((resolve,reject) => {
+      const tx=database.transaction(STORE,"readonly"), request=tx.objectStore(STORE).get(key);
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error);
+    });
+  }
+  async function write(records) {
+    const database = await db();
+    return new Promise((resolve,reject) => {
+      const tx=database.transaction(STORE,"readwrite");
+      for (const record of records) tx.objectStore(STORE).put(record);
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error || Error("Could not save locally"));
+      tx.onabort=()=>reject(tx.error || Error("Local save was interrupted"));
+    });
+  }
+  function draft(token) {
+    try {return JSON.parse(localStorage.getItem(draftPrefix+token) || '{"fields":{}}');}
+    catch {return {fields:{}};}
+  }
+  function storeDraft(token,value) {
+    try {
+      if (Object.keys(value.fields).length) localStorage.setItem(draftPrefix+token,JSON.stringify(value));
+      else localStorage.removeItem(draftPrefix+token);
+    } catch { /* Full IndexedDB/server saving still operates. */ }
+  }
+  function get(object,path) {return path.reduce((value,key)=>value == null ? undefined : value[key],object);}
+  function put(object,path,value) {
+    const parent=path.slice(0,-1).reduce((value,key)=>value && value[key],object);
+    if (parent && Object.prototype.hasOwnProperty.call(parent,path[path.length-1])) parent[path[path.length-1]]=value;
+  }
+  function equal(a,b) {return a===b || (typeof a==="string" && typeof b==="string" && a.trim()===b.trim());}
+  function capture(event) {
+    if (!active || !event.target || !event.target.closest) return;
+    const owner=event.target.closest('[class*="st-key-_tl27_"]');
+    if (!owner) return;
+    const key=Array.from(owner.classList).find(key=>key.startsWith("st-key-_tl27_"));
+    const binding=active.bindings[key && key.slice(7)];
+    if (!binding) return; // Never capture passwords, staff notes or unrelated fields.
+    let value=event.target.value;
+    if (typeof value!=="string") return;
+    if (binding.kind==="number") {
+      value=value.trim()==="" ? null : Number(value);
+      if (value!==null && !Number.isFinite(value)) return;
+    } else value=value.slice(0,binding.path[0]==="student" ? 200 : 3000);
+    const pending=draft(active.token);
+    pending.fields[binding.path.join(".")]={path:binding.path,value};
+    pending.edited_at=Date.now();
+    storeDraft(active.token,pending);
+  }
+  try {
+    parentDocument=window.parent.document;
+    parentDocument.addEventListener("input",capture,true);
+    window.addEventListener("unload",()=>parentDocument.removeEventListener("input",capture,true));
+  } catch { /* Committed fields still save through the component protocol. */ }
+  async function sync(a) {
+    active=a;
+    const identity=/^\d{8}$/.test(a.student_id) ? "student:"+a.student_id : "";
+    const sessionKey="session:"+a.token;
+    const record=(identity && await read(identity)) || await read(sessionKey);
+    const pending=draft(a.token);
+    for (const [key,field] of Object.entries(pending.fields)) {
+      if (equal(get(a.payload,field.path),field.value)) delete pending.fields[key];
+    }
+    storeDraft(a.token,pending);
+    const canRestore=a.policy!=="sync";
+    const sameIdentity=record && (record.payload.student.id===a.student_id || (!a.student_id && record.token===a.token));
+    const preferred=canRestore && sameIdentity &&
+      (a.policy==="lookup" || a.policy==="recover" || record.revision>a.revision);
+    let restored=preferred ? JSON.parse(JSON.stringify(record.payload)) : JSON.parse(JSON.stringify(a.payload));
+    let changed=preferred && record.hash!==a.hash, candidateId="", identityFromDraft=false;
+    if (canRestore) for (const field of Object.values(pending.fields)) {
+      if (field.path.join(".")==="student.id") {
+        if (!/^\d{8}$/.test(String(field.value)) || (restored.student.id && restored.student.id!==field.value)) {
+          candidateId=String(field.value); continue;
+        }
+        if (!restored.student.id) identityFromDraft=true;
+      }
+      if (!equal(get(restored,field.path),field.value)) {put(restored,field.path,field.value);changed=true;}
+    }
+    if (canRestore && (changed || candidateId)) {
+      reply({action:"restore",request_id:a.request_id,base_hash:a.hash,
+        payload:restored,token:preferred ? record.token : a.token,
+        revision:Math.max(a.revision,preferred ? record.revision : 0)+1,
+        section:preferred ? record.section : a.section,candidate_id:candidateId,identity_from_draft:identityFromDraft});
+      return; // Never overwrite the recoverable record with a blank first render.
+    }
+    const saved={payload:a.payload,token:a.token,revision:a.revision,section:a.section,hash:a.hash};
+    const records=[{key:sessionKey,...saved}];
+    if (identity) records.push({key:identity,...saved});
+    await write(records);
+    reply({action:"saved",request_id:a.request_id,base_hash:a.hash,revision:a.revision});
+  }
+  window.addEventListener("message",event=>{
+    if (event.source!==window.parent || !event.data || event.data.type!=="streamlit:render") return;
+    const args=event.data.args;
+    if (!args || args.schema!=="trusslab-browser-progress-v1") return;
+    chain=chain.then(()=>sync(args)).catch(error=>reply({action:"unavailable",request_id:args.request_id,base_hash:args.hash,message:String(error)}));
+  });
+  message("streamlit:componentReady",{apiVersion:1});
+  message("streamlit:setFrameHeight",{height:0});
+})();
+</script></body></html>'''
+
+
+def _progress_meta_path(root,token):
+    if not re.fullmatch(r"[a-f0-9]{48}",token):raise ValueError("Invalid private resume key")
+    return Path(root)/"student_saves"/"2027"/(token+".state.json")
+
+
+def _set_browser_request(policy):
+    st.session_state["_tl27_browser_request"]={"id":core.new_token(),"policy":policy}
+    st.session_state["_tl27_browser_status"]="pending"
+    st.session_state.pop("_tl27_browser_ack_hash",None)
+
+
+def _save_current_progress(root):
+    current=model();token=st.session_state["_tl27_token"]
+    section=st.session_state.get("_tl27_navigation",SECTIONS[0])
+    state_hash=core.digest({"model":current,"section":section})
+    if st.session_state.get("_tl27_saved_state_hash")!=state_hash:
+        revision=max(time.time_ns()//1_000_000,st.session_state.get("_tl27_revision",0)+1)
+        core.save_progress(root,token,current)
+        meta={"revision":revision,"section":section,"model_hash":core.digest(current)}
+        target=_progress_meta_path(root,token)
+        temporary=None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w",encoding="utf-8",dir=target.parent,suffix=".tmp",delete=False) as stream:
+                temporary=Path(stream.name);json.dump(meta,stream)
+            temporary.replace(target)
+        finally:
+            if temporary is not None:temporary.unlink(missing_ok=True)
+        st.session_state["_tl27_revision"]=revision
+        st.session_state["_tl27_saved_state_hash"]=state_hash
+
+
+def _apply_browser_restore():
+    pending=st.session_state.pop("_tl27_pending_browser_restore",None)
+    if not pending:return
+    restored=core.validate_model(pending["payload"])
+    st.session_state["_tl27_model"]=restored
+    token=pending.get("token","")
+    st.session_state["_tl27_token"]=token if re.fullmatch(r"[a-f0-9]{48}",token) else core.new_token()
+    st.session_state["_tl27_revision"]=int(pending.get("revision",0))
+    clear_widgets()
+    section=pending.get("section",SECTIONS[0])
+    st.session_state["_tl27_navigation"]=section if section in SECTIONS else SECTIONS[0]
+    candidate=pending.get("candidate_id","")
+    if candidate:
+        st.session_state["_tl27_identity_id"]=candidate
+    st.session_state.pop("_tl27_saved_state_hash",None)
+    st.session_state.pop("_tl27_details_error",None)
+    st.session_state["_tl27_restored_notice"]=True
+    st.query_params["work"]=st.session_state["_tl27_token"]
+    if re.fullmatch(r"\d{8}",candidate) and candidate!=restored["student"]["id"]:
+        # A refresh during an ID edit must not attach the previous student's
+        # calculations to the newly typed number.
+        _save_current_progress(Path(st.session_state["_tl27_root"]))
+        fresh=core.fresh_model(restored["settings"])
+        fresh["student"]["id"]=candidate
+        st.session_state["_tl27_model"]=fresh
+        st.session_state["_tl27_token"]=core.new_token()
+        st.session_state["_tl27_navigation"]=SECTIONS[0]
+        st.session_state.pop("_tl27_saved_state_hash",None)
+        st.query_params["work"]=st.session_state["_tl27_token"]
+        _set_browser_request("lookup")
+    else:_set_browser_request("lookup" if pending.get("identity_from_draft") else "sync")
+
+
 def initialise(root):
-    if "_tl27_model" in st.session_state:return
-    settings,warnings=core.load_settings(root)
-    token=st.query_params.get("work","")
-    try: saved=core.load_progress(root,token) if token else None
-    except (ValueError,OSError,TypeError,KeyError): saved=None
-    if saved is None:
-        token=core.new_token()
-        saved=core.fresh_model(settings)
-    st.session_state["_tl27_model"]=saved
-    st.session_state["_tl27_token"]=token
-    st.session_state["_tl27_warnings"]=warnings
-    st.query_params["work"]=token
+    st.session_state["_tl27_root"]=str(root)
+    if "_tl27_model" not in st.session_state:
+        settings,warnings=core.load_settings(root)
+        token=st.query_params.get("work","")
+        try:saved=core.load_progress(root,token) if token else None
+        except (ValueError,OSError,TypeError,KeyError):saved=None
+        if saved is None:
+            token=core.new_token();saved=core.fresh_model(settings)
+        st.session_state["_tl27_model"]=saved
+        st.session_state["_tl27_token"]=token
+        st.session_state["_tl27_warnings"]=warnings
+        st.session_state["_tl27_had_server_progress"]=bool(saved["student"]["id"])
+    if "_tl27_revision" not in st.session_state:
+        token=st.session_state["_tl27_token"]
+        current=st.session_state["_tl27_model"]
+        try:
+            meta=json.loads(_progress_meta_path(root,token).read_text())
+            if meta.get("model_hash")!=core.digest(current):raise ValueError("Changed progress")
+            st.session_state["_tl27_revision"]=int(meta["revision"])
+            if meta.get("section") in SECTIONS:st.session_state.setdefault("_tl27_navigation",meta["section"])
+            st.session_state["_tl27_saved_state_hash"]=core.digest({"model":current,"section":meta["section"]})
+        except (OSError,ValueError,TypeError,KeyError):
+            path=Path(root)/"student_saves"/"2027"/(token+".json")
+            st.session_state["_tl27_revision"]=int(path.stat().st_mtime*1000) if path.exists() else 0
+        _set_browser_request("latest" if current["student"]["id"] else "recover")
+    _apply_browser_restore()
+    st.query_params["work"]=st.session_state["_tl27_token"]
+
+
+def preserve_student_widgets():
+    for key in list(st.session_state):
+        if key.startswith(("_tl27_input_","_tl27_identity_","_tl27_predict_")) or key in ("_tl27_navigation","_tl27_declaration","_tl27_online_stage","_tl27_capacity_slider"):
+            st.session_state[key]=st.session_state[key]
+
+
+def browser_progress(root):
+    import streamlit.components.v1 as components
+    folder=Path(root)/"student_saves"/"2027"/"_local_progress_component"
+    folder.mkdir(parents=True,exist_ok=True)
+    index=folder/"index.html"
+    if not index.exists() or index.read_text(encoding="utf-8")!=LOCAL_PROGRESS_HTML:
+        index.write_text(LOCAL_PROGRESS_HTML,encoding="utf-8")
+    component=components.declare_component("trusslab_2027_local_progress",path=str(folder.resolve()))
+    current=model();model_hash=core.digest(current)
+    request=st.session_state["_tl27_browser_request"]
+    bindings={}
+    for section in ("theory","experimental","capacity","explanations","prelab"):
+        for key,value in current[section].items():
+            if key=="predictions" or isinstance(value,(dict,list)):continue
+            kind="text" if isinstance(value,str) or (section in ("explanations","prelab") and key!="weight10") else "number"
+            bindings[f"_tl27_input_{section}_{key}"]={"path":[section,key],"kind":kind}
+    for key in ("name","id","group"):
+        bindings[f"_tl27_identity_{key}"]={"path":["student",key],"kind":"text"}
+    response=component(schema="trusslab-browser-progress-v1",payload=current,hash=model_hash,
+        student_id=current["student"]["id"],token=st.session_state["_tl27_token"],
+        revision=st.session_state["_tl27_revision"],section=st.session_state.get("_tl27_navigation",SECTIONS[0]),
+        request_id=request["id"],policy=request["policy"],bindings=bindings,
+        key="_tl27_browser_storage",default=None)
+    if not isinstance(response,dict) or response.get("request_id")!=request["id"] or response.get("base_hash")!=model_hash:return
+    action=response.get("action")
+    if action=="restore":
+        restored=core.validate_model(response["payload"])
+        if current["student"]["id"] and restored["student"]["id"]!=current["student"]["id"]:
+            return
+        st.session_state["_tl27_pending_browser_restore"]=response
+        st.rerun()
+    elif action=="saved":
+        st.session_state["_tl27_browser_status"]="saved"
+        st.session_state["_tl27_browser_ack_hash"]=model_hash
+        request["policy"]="sync"
+    elif action=="unavailable":
+        st.session_state["_tl27_browser_status"]="unavailable"
 
 
 def model():return st.session_state["_tl27_model"]
 
 
+def _persist_soon():
+    try:_save_current_progress(Path(st.session_state["_tl27_root"]))
+    except (OSError,ValueError,TypeError):pass
+
+
 def sync(section,key,widget):
     model()[section][key]=st.session_state[widget]
+    _persist_soon()
+
+
+def identity_text_changed(key):
+    model()["student"][key]=st.session_state[f"_tl27_identity_{key}"].strip()
+    _persist_soon()
+
+
+def identity_id_changed():
+    sid=st.session_state["_tl27_identity_id"].strip()
+    if not re.fullmatch(r"\d{8}",sid):
+        st.session_state["_tl27_details_error"]="Enter the full eight-digit JCU student ID. Your existing saved work has been kept."
+        return
+    st.session_state.pop("_tl27_details_error",None)
+    current=model()
+    if sid!=current["student"]["id"]:
+        if current["student"]["id"]:
+            _persist_soon()
+            st.session_state["_tl27_model"]=core.fresh_model(current["settings"])
+            st.session_state["_tl27_token"]=core.new_token()
+            clear_widgets()
+            st.session_state["_tl27_identity_id"]=sid
+        model()["student"]["id"]=sid
+        st.session_state.pop("_tl27_saved_state_hash",None)
+        _set_browser_request("lookup")
+        st.query_params["work"]=st.session_state["_tl27_token"]
+    _persist_soon()
+
+
+def identity_mode_changed():
+    new=st.session_state["_tl27_identity_mode"]
+    current=model();old=current["student"]["mode"]
+    if new not in (core.PHYSICAL,core.ONLINE):return
+    if old and new!=old:
+        if not st.session_state.get("_tl27_restart_mode",False):
+            st.session_state["_tl27_identity_mode"]=old
+            st.session_state["_tl27_details_error"]="To change an existing pathway, tick the fresh-start option first. Existing readings and calculations have been kept."
+            return
+        _persist_soon()
+        student=dict(current["student"])
+        st.session_state["_tl27_model"]=core.fresh_model(current["settings"])
+        model()["student"]=student
+        st.session_state["_tl27_token"]=core.new_token()
+        clear_widgets()
+        st.session_state["_tl27_identity_mode"]=new
+        st.session_state.pop("_tl27_saved_state_hash",None)
+        _set_browser_request("sync")
+        st.query_params["work"]=st.session_state["_tl27_token"]
+    model()["student"]["mode"]=new
+    st.session_state.pop("_tl27_details_error",None)
+    _persist_soon()
 
 
 def number(section,key,label,minimum=None,step=.01):
@@ -1519,28 +1874,20 @@ def page_details(root):
     left,right=st.columns([2.2,1],gap="large")
     with left:
         st.markdown('<div class="student-form-intro"><div class="title">Your details</div><div class="text">Enter the details from your JCU enrolment.</div></div>',unsafe_allow_html=True)
-        with st.form("_tl27_details"):
-            name=st.text_input("Full name",value=s["name"],max_chars=120)
-            sid=st.text_input("JCU student ID (8 digits)",value=s["id"],max_chars=8)
-            group=st.text_input("Practical/tutorial group",value=s["group"],max_chars=120)
-            modes=[core.PHYSICAL,core.ONLINE]
-            mode=st.selectbox("Practical pathway",modes,index=modes.index(s["mode"]) if s["mode"] in modes else None,
-                              placeholder="Choose the pathway confirmed by your lecturer")
-            restart=st.checkbox("Start fresh calculations and readings if I change an existing student ID or pathway")
-            submitted=st.form_submit_button("Save student details",type="primary")
-        if submitted:
-            import re
-            if not name.strip() or not re.fullmatch(r"\d{8}",sid.strip()) or not group.strip() or mode not in modes:
-                st.error("Enter your name, eight-digit JCU ID, group and pathway.")
-            else:
-                changed=bool(s["id"] and (s["id"]!=sid.strip() or s["mode"]!=mode))
-                if changed and not restart:st.error("Changing an existing ID or pathway starts a fresh practical. Download a progress backup first, then tick the fresh-start option.")
-                else:
-                    if changed:
-                        st.session_state["_tl27_model"]=core.fresh_model(m["settings"])
-                        clear_widgets()
-                    model()["student"]={"name":name.strip(),"id":sid.strip(),"group":group.strip(),"mode":mode}
-                    st.success("Student details saved. Continue to Section 2.")
+        for key in ("name","id","group","mode"):
+            st.session_state.setdefault(f"_tl27_identity_{key}",s[key] or (None if key=="mode" else ""))
+        st.text_input("Full name",max_chars=120,key="_tl27_identity_name",on_change=identity_text_changed,args=("name",))
+        st.text_input("JCU student ID (8 digits)",max_chars=8,key="_tl27_identity_id",on_change=identity_id_changed,
+                      help="Use your official student ID. Work saved on this browser for that ID is restored automatically.")
+        st.text_input("Practical/tutorial group",max_chars=120,key="_tl27_identity_group",on_change=identity_text_changed,args=("group",))
+        st.checkbox("Start fresh calculations and readings if I change an existing pathway",key="_tl27_restart_mode")
+        st.selectbox("Practical pathway",[core.PHYSICAL,core.ONLINE],index=None,key="_tl27_identity_mode",
+                     placeholder="Choose the pathway confirmed by your lecturer",on_change=identity_mode_changed)
+        if st.button("Save student details",type="primary",key="_tl27_check_details"):
+            if core.identity_complete(model()):st.success("Student details saved. Continue to Section 2.")
+            else:st.error("Enter your name, eight-digit JCU ID, group and pathway.")
+        st.caption("Your entries are saved automatically as you work; pressing Save is optional.")
+        if st.session_state.get("_tl27_details_error"):st.error(st.session_state["_tl27_details_error"])
         selected=model()["student"]["mode"]
         if selected:
             st.markdown(f'<div class="mode-summary"><b>{escape(selected)}</b><br>'+('Attend the scheduled session, complete the safety acknowledgement and enter the apparatus readings.' if selected==core.PHYSICAL else 'The app creates reproducible 2027 simulated readings from your official JCU student ID.')+'</div>',unsafe_allow_html=True)
@@ -1565,14 +1912,17 @@ def page_details(root):
                 restored=core.parse_progress(backup.getvalue())
                 st.session_state["_tl27_model"]=restored
                 clear_widgets()
+                st.session_state.pop("_tl27_saved_state_hash",None)
+                _set_browser_request("sync")
                 st.rerun()
             except Exception as exc:st.error(f"Could not restore progress: {exc}")
 
 
 def clear_widgets():
     for key in list(st.session_state):
-        if key.startswith(("_tl27_input_","_tl27_upload_","_tl27_uploaded_hash_","_tl27_editor","_tl27_predict_")):
+        if key.startswith(("_tl27_input_","_tl27_identity_","_tl27_upload_","_tl27_uploaded_hash_","_tl27_editor","_tl27_predict_")):
             del st.session_state[key]
+    st.session_state.pop("_tl27_restart_mode",None)
     st.session_state.pop("_tl27_declaration",None)
     st.session_state.pop("_tl27_bundle",None)
     st.session_state.pop("_tl27_bundle_signature",None)
@@ -1743,7 +2093,8 @@ def page_capacity(root):
     record_button("capacity",core.capacity_complete(m),"Record capacity calculation attempt")
     if core.recorded(m,"capacity"):
         st.markdown("**Explore the model after recording your attempt**")
-        mass=st.slider("Model mass only (kg)",0.,40.,30.,.1,key="_tl27_capacity_slider")
+        st.session_state.setdefault("_tl27_capacity_slider",30.0)
+        mass=st.slider("Model mass only (kg)",min_value=0.,max_value=40.,step=.1,key="_tl27_capacity_slider")
         forces=core.theory(mass,settings["g"])
         tension=forces["EB"]/settings["tension"]
         compression=abs(forces["AE"])/settings["compression"]
@@ -1882,8 +2233,11 @@ def staff_workspace(root):
 
 def main(root:Path):
     initialise(root)
-    st.markdown(CSS,unsafe_allow_html=True)
+    preserve_student_widgets()
+    st.html(CSS)
     render_brand_header(root)
+    if st.session_state.pop("_tl27_restored_notice",False):
+        st.success("Your saved 2027 work has been restored on this browser.")
     m=model()
     completed=stage_completion(m)
     st.sidebar.markdown('<div class="sidebar-brand"><div class="title">TrussLab</div><div class="course">EG1011 · Statics and Dynamics</div></div>',unsafe_allow_html=True)
@@ -1906,7 +2260,7 @@ def main(root:Path):
     st.sidebar.markdown('<div class="sidebar-summary-card"><div class="sidebar-summary-title">Practical summary</div><div class="sidebar-summary-row"><span class="icon">✎</span><span><b>Evidence</b><br>Four handwritten working tasks</span></div><div class="sidebar-summary-row"><span class="icon">📄</span><span><b>Report</b><br>Complete PDF and Word report</span></div><div class="sidebar-summary-row"><span class="icon">📊</span><span><b>Dataset</b><br>Physical or simulated readings</span></div><div class="sidebar-summary-row"><span class="icon">🎯</span><span><b>Objective</b><br>Member-force analysis</span></div></div>',unsafe_allow_html=True)
     backup_slot=st.sidebar.empty()
     with st.sidebar.expander("Progress and backups"):
-        st.caption("Keep your private resume URL and a downloaded backup. Server storage can be cleared when the app restarts. Restore a backup in Student details when changing devices.")
+        st.caption("Work is saved on this browser by student ID and separately on the app server using your private resume URL. Keep a downloaded backup for another device or if browser storage is cleared.")
     st.sidebar.markdown('<div class="sidebar-footer"><div class="footer-help">Use the ❓ Help control on any page for guidance.</div><div class="footer-version">TrussLab · 2027</div><div>James Cook University</div><div>Mechanical Engineering</div><div class="footer-credit">Designed by Dr Mehdi Khatamifar</div></div>',unsafe_allow_html=True)
     with st.sidebar.expander("Staff tools"):
         staff=st.toggle("Staff checking workspace",value=False,key="_tl27_staff_workspace")
@@ -1925,10 +2279,17 @@ def main(root:Path):
         with backup_slot.container():
             st.download_button("Download progress backup",core.progress_bytes(current),file_name=f"TrussLab_2027_{current['student']['id'] or 'progress'}_backup.json",mime="application/json",on_click="ignore",key="_tl27_backup")
         try:
-            fingerprint=core.digest(model())
-            if st.session_state.get("_tl27_last_saved")!=fingerprint:
-                core.save_progress(root,st.session_state["_tl27_token"],model())
-                st.session_state["_tl27_last_saved"]=fingerprint
-            save_slot.markdown('<div class="sidebar-status-inline good"><span class="dot"></span><span>Progress automatically saved</span></div>',unsafe_allow_html=True)
+            _save_current_progress(root)
+            saved_on_server=True
         except Exception:
+            saved_on_server=False
+        try:browser_progress(root)
+        except Exception:
+            st.session_state["_tl27_browser_status"]="unavailable"
+        local_status=st.session_state.get("_tl27_browser_status","pending")
+        if local_status=="saved" and st.session_state.get("_tl27_browser_ack_hash")==core.digest(current):
+            save_slot.markdown('<div class="sidebar-status-inline good"><span class="dot"></span><span>Progress saved on this browser'+(' and app server' if saved_on_server else '')+'</span></div>',unsafe_allow_html=True)
+        elif saved_on_server:
+            save_slot.markdown('<div class="sidebar-status-inline good"><span class="dot"></span><span>Progress saved on the app server</span></div>',unsafe_allow_html=True)
+        else:
             save_slot.markdown('<div class="sidebar-status-inline warn"><span class="dot"></span><span>Download a progress backup before leaving.</span></div>',unsafe_allow_html=True)
