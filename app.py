@@ -1,6 +1,7 @@
 """TrussLab year selector. Run with: streamlit run app.py."""
 from pathlib import Path
 import hashlib
+from importlib.machinery import ModuleSpec
 import runpy
 import sys
 import types
@@ -14,21 +15,44 @@ YEARS = (2027, 2026)
 
 
 @st.cache_resource(show_spinner=False)
-def load_2027_version(source: bytes, script_path: str):
-    """Cache each source revision separately, never a stale imported module.
+def load_2027_version(sources: tuple, root_path: str):
+    """Load matching app, core and report modules in a private package.
 
-    The resource cache serialises initialisation for concurrent sessions. All
-    student data remains in Streamlit session state and existing progress files.
+    The cache key includes every source file, including helper-only updates.
+    Relative imports use this package's modules, never old absolute imports
+    left in Python's cache. Existing sessions can finish using their revision;
+    loading a new one does not mutate modules used by another student.
     """
-    version=hashlib.sha256(source).hexdigest()
-    location=hashlib.sha256(script_path.encode()).hexdigest()[:12]
+    version=hashlib.sha256(b"\0".join(name.encode()+b"\0"+source for name,source in sources)).hexdigest()
+    location=hashlib.sha256(root_path.encode()).hexdigest()[:12]
     name="_trusslab_2027_"+version+"_"+location
-    module=types.ModuleType(name)
-    module.__file__=script_path
-    module.__package__=""
-    exec(compile(source,script_path,"exec"),module.__dict__)
-    sys.modules[name]=module
-    return module
+    package=types.ModuleType(name)
+    package.__file__=str(Path(root_path)/"app.py")
+    package.__package__=name
+    package.__path__=[root_path]
+    package.__spec__=ModuleSpec(name,loader=None,is_package=True)
+    sys.modules[name]=package
+    loaded=[name]
+    try:
+        # Core first, then reports, then the app: dependencies are registered
+        # before the next module executes its standard relative imports.
+        for filename,source in sources:
+            stem=Path(filename).stem
+            module_name=name+"."+stem
+            script_path=str(Path(root_path)/filename)
+            module=types.ModuleType(module_name)
+            module.__file__=script_path
+            module.__package__=name
+            module.__spec__=ModuleSpec(module_name,loader=None,origin=script_path)
+            sys.modules[module_name]=module
+            loaded.append(module_name)
+            setattr(package,stem,module)
+            exec(compile(source,script_path,"exec"),module.__dict__)
+    except BaseException:
+        for module_name in reversed(loaded):
+            sys.modules.pop(module_name,None)
+        raise
+    return package.app_2027
 
 
 def change_year():
@@ -60,5 +84,6 @@ st.sidebar.caption(f"You are using the {st.session_state['_tl_year']} practical.
 if st.session_state["_tl_year"] == 2026:
     runpy.run_path(str(ROOT / "app_2026.py"), run_name="__main__")
 else:
-    script=ROOT/"app_2027.py"
-    load_2027_version(script.read_bytes(),str(script)).main(ROOT)
+    source_files=("trusslab_2027_core.py","trusslab_2027_reports.py","app_2027.py")
+    sources=tuple((name,(ROOT/name).read_bytes()) for name in source_files)
+    load_2027_version(sources,str(ROOT)).main(ROOT)
